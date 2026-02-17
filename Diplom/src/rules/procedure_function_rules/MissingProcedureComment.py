@@ -34,7 +34,7 @@ class MissingProcedureCommentRule(BaseRule):
                             column=1,
                             message=f"Процедура '{proc.name}'"
                             f"не имеет описания."
-                            f"Добавьте комментарий над процедурой",
+                            f"Добавьте комментарий над  процедурой",
                         )
                     )
 
