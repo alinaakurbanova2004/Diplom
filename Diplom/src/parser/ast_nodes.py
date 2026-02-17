@@ -64,10 +64,12 @@ class ProcedureNode(ASTNode):
 
 
 class ParameterNode(ASTNode):
-    def __init__(self, name: str, by_value: bool = False):
+    def __init__(self, name: str, by_value: bool = False,
+                 has_default_value: bool = False):
         super().__init__(NodeType.PARAMETER)
         self.name = name
         self.by_value = by_value
+        self.has_default_value = has_default_value
 
 
 class VariableNode(ASTNode):
