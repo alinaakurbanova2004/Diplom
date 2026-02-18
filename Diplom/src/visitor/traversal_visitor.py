@@ -1,8 +1,10 @@
 from Diplom.src.parser.ast_nodes import (
+    BinaryOperationNode,
     FunctionNode,
     IfStatementNode,
     ModuleNode,
-    ProcedureNode, WhileLoopNode)
+    ProcedureNode,
+    ReturnStatementNode, WhileLoopNode)
 from Diplom.src.visitor.base_visitor import ASTVisitor
 
 
@@ -67,3 +69,15 @@ class TraversalVisitor(ASTVisitor):
         # Обходим тело цикла
         for stmt in node.body:
             stmt.accept(self)
+
+    def visit_binary_operation(self, node: BinaryOperationNode):
+        """Обрабатывает бинарную операцию (a + b, a > b)"""
+        if node.left:
+            node.left.accept(self)
+        if node.right:
+            node.right.accept(self)
+
+    def visit_return_statement(self, node: ReturnStatementNode):
+        """Обрабатывает оператор Возврат"""
+        if node.expression:
+            node.expression.accept(self)

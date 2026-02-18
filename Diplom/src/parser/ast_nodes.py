@@ -169,3 +169,11 @@ class ReturnStatementNode(ASTNode):
 
     def accept(self, visitor: ASTVisitor):
         visitor.visit_return_statement(self)
+
+
+class AssignmentNode(ASTNode):
+    """Узел присваивания"""
+    def __init__(self, left: ASTNode, right: ASTNode, range: Range = None):
+        super().__init__(NodeType.ASSIGNMENT, range)
+        self.left = left  
+        self.right = right
