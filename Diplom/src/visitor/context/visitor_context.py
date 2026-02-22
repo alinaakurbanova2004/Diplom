@@ -1,5 +1,5 @@
-from Diplom.src.parser.ast_nodes import FunctionNode, WhileLoopNode
-from Diplom.src.visitor.base_visitor import ASTVisitor
+from src.parser.ast_nodes import FunctionNode, WhileLoopNode
+from src.visitor.base_visitor import ASTVisitor
 
 
 class VisitorContext:

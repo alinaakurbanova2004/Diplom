@@ -1,11 +1,11 @@
-from Diplom.src.parser.ast_nodes import (
+from src.parser.ast_nodes import (
     BinaryOperationNode,
     FunctionNode,
     IfStatementNode,
     ModuleNode,
     ProcedureNode,
     ReturnStatementNode, WhileLoopNode)
-from Diplom.src.visitor.base_visitor import ASTVisitor
+from src.visitor.base_visitor import ASTVisitor
 
 
 class TraversalVisitor(ASTVisitor):

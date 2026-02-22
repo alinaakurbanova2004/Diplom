@@ -1,7 +1,7 @@
 from typing import List
-from Diplom.src.parser.ast_nodes import ModuleNode, ProcedureNode, VariableNode
-from Diplom.src.rules.basic_rule import BaseRule
-from Diplom.src.rules.violation import Violation
+from src.parser.ast_nodes import ModuleNode, ProcedureNode, VariableNode
+from src.rules.basic_rule import BaseRule
+from src.rules.violation import Violation
 
 
 class VariableMinLength(BaseRule):

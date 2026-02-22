@@ -1,5 +1,5 @@
-from Diplom.src.parser.ast_nodes import VariableNode
-from Diplom.src.visitor.base_visitor import ASTVisitor
+from src.parser.ast_nodes import VariableNode
+from src.visitor.base_visitor import ASTVisitor
 from src.parser.ast_nodes import AssignmentNode
 
 

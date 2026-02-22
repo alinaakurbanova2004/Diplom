@@ -29,7 +29,7 @@ class BSLParser:
 
     def parse_string(self, code: str, 
                      module_name: str = "module.bsl") -> ModuleNode:
-   
+
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".bsl", encoding="utf-8", delete=False
         ) as tmp:
@@ -40,6 +40,7 @@ class BSLParser:
             # Запуск BSL Language Server
             cmd = [
                 "java",
+                "-Xmx2g",
                 "-jar",
                 str(self.jar_path),
                 "analyze",
@@ -49,7 +50,7 @@ class BSLParser:
             ]
 
             result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=30
+                cmd, capture_output=True, text=True, timeout=60
                 )
 
             # Парсинг JSON ответ
@@ -223,9 +224,9 @@ class BSLParser:
         return stmt
 
     def _parse_expression(self, expr_data: dict) -> ASTNode:
-    
+
         """Парсит выражение (рекурсивно!)"""
-    
+
         expr_type = expr_data.get("type", "")
 
         if expr_type == "literal":
@@ -248,7 +249,7 @@ class BSLParser:
             right = self._parse_expression(expr_data["right"])
             operator = expr_data.get("operator", "")
             return BinaryOperationNode(operator, left, right)
-   
+
         else:
             print(f"Неизвестный тип выражения: {expr_type}")
             return ASTNode(NodeType.EXPRESSION)

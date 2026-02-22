@@ -1,4 +1,4 @@
-from Diplom.src.parser.ast_nodes import (
+from src.parser.ast_nodes import (
     BinaryOperationNode,
     FunctionNode,
     IfStatementNode,

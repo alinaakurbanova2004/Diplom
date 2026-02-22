@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List
 from enum import Enum
 
-from Diplom.src.visitor.base_visitor import ASTVisitor
+from src.visitor.base_visitor import ASTVisitor
 
 
 class NodeType(Enum):

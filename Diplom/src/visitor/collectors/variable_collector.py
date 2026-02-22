@@ -1,8 +1,6 @@
-from Diplom.src.parser.ast_nodes import (FunctionNode,
-                                         ModuleNode,
-                                         ProcedureNode,
-                                         VariableNode)
-from Diplom.src.visitor.base_visitor import ASTVisitor
+from src.parser.ast_nodes import (FunctionNode, ModuleNode,
+                                  ProcedureNode, VariableNode)
+from src.visitor.base_visitor import ASTVisitor
 
 
 class VariableCollector(ASTVisitor):
