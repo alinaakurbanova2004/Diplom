@@ -1,6 +1,6 @@
 from typing import List
 from src.parser.ast_nodes import ModuleNode, VariableNode
-from src.rules.basic_rule import BaseRule
+from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
 

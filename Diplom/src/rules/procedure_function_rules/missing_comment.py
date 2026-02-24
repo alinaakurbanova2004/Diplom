@@ -1,10 +1,10 @@
 from typing import List
 from src.parser.ast_nodes import ModuleNode
-from src.rules.basic_rule import BaseRule
+from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
 
-class MissingProcedureCommentRule(BaseRule):
+class MissingProcedureComment(BaseRule):
     """У каждой процедуры должен быть комментарий с описанием"""
 
     def __init__(self):

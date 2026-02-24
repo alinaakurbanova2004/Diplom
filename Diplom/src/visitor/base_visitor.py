@@ -1,42 +1,49 @@
-from src.parser.ast_nodes import (
-    BinaryOperationNode,
-    FunctionNode,
-    IfStatementNode,
-    LiteralNode,
-    ModuleNode,
-    ProcedureNode,
-    ReturnStatementNode,
-    VariableNode,
-    WhileLoopNode,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.parser.ast_nodes import (
+        ModuleNode,
+        FunctionNode,
+        ProcedureNode,
+        VariableNode,
+        IfStatementNode,
+        WhileLoopNode,
+        ReturnStatementNode,
+        BinaryOperationNode,
+        LiteralNode,
+        ParameterNode,
+    )
 
 
 class ASTVisitor:
     """Базовый класс Visitor для обхода AST"""
 
-    def visit_module(self, node: ModuleNode):
+    def visit_module(self, node: "ModuleNode"):
         pass
 
-    def visit_function(self, node: FunctionNode):
+    def visit_function(self, node: "FunctionNode"):
         pass
 
-    def visit_procedure(self, node: ProcedureNode):
+    def visit_procedure(self, node: "ProcedureNode"):
         pass
 
-    def visit_variable(self, node: VariableNode):
+    def visit_variable(self, node: "VariableNode"):
         pass
 
-    def visit_if_statement(self, node: IfStatementNode):
+    def visit_parameter(self, node: "ParameterNode"):
         pass
 
-    def visit_while_loop(self, node: WhileLoopNode):
+    def visit_if_statement(self, node: "IfStatementNode"):
         pass
 
-    def visit_return_statement(self, node: ReturnStatementNode):
+    def visit_while_loop(self, node: "WhileLoopNode"):
         pass
 
-    def visit_binary_operation(self, node: BinaryOperationNode):
+    def visit_return_statement(self, node: "ReturnStatementNode"):
         pass
 
-    def visit_literal(self, node: LiteralNode):
+    def visit_binary_operation(self, node: "BinaryOperationNode"):
+        pass
+
+    def visit_literal(self, node: "LiteralNode"):
         pass

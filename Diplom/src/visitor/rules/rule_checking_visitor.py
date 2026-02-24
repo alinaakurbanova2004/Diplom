@@ -1,7 +1,7 @@
 from typing import List
 from src.parser.ast_nodes import (FunctionNode,
                                   ModuleNode, ProcedureNode,  VariableNode)
-from Diplom.src.rules.basic_rule import BaseRule
+from Diplom.src.rules.base_rule import BaseRule
 from Diplom.src.visitor.base_visitor import ASTVisitor
 
 

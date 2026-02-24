@@ -1,13 +1,34 @@
-from typing import Dict
+from typing import Dict, List, Optional
 from src.rules import naming_rules, procedure_function_rules
-from .basic_rule import BaseRule
+from .base_rule import BaseRule
 
 
 class RuleRegistry:
     _rules: Dict[str, BaseRule] = {}
 
     @classmethod
+    def register(cls, rule: BaseRule):
+        """Регистрирует правило"""
+        cls._rules[rule.code] = rule
+
+    @classmethod
+    def get_rule(cls, code: str) -> Optional[BaseRule]:
+        """Возвращает правило по коду"""
+        return cls._rules.get(code)
+
+    @classmethod
+    def get_all_rules(cls) -> List[BaseRule]:
+        """Возвращает все правила"""
+        return list(cls._rules.values())
+
+    @classmethod
+    def get_enabled_rules(cls) -> List[BaseRule]:
+        """Возвращает только включенные правила"""
+        return [r for r in cls._rules.values() if r.enabled]
+
+    @classmethod
     def initialize(cls):
+        """Инициализирует и регистрирует все правила"""
         rules = [
             # Правила именования
             naming_rules.CamelCase(),
@@ -25,3 +46,7 @@ class RuleRegistry:
 
         for rule in rules:
             cls.register(rule)
+
+
+# Автоматическая инициализация при импорте
+RuleRegistry.initialize()

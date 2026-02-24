@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 # Flask и расширения
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
+
 # Импортируем твои модули
 from src.rules.violation import Violation
 from src.parser.bsl_parser import BSLParser
@@ -25,8 +26,8 @@ app = Flask(__name__)
 CORS(app)  # Разрешаем запросы из браузера и 1С
 
 # Конфигурация
-JAR_PATH = os.path.join(project_root, "lib",
-                        "bsl-language-server-0.28.4-exec.jar")
+JAR_PATH = os.path.join(
+    project_root, "lib", "bsl-language-server-0.28.4-exec.jar")
 REPORTS_DIR = os.path.join(project_root, "reports")
 
 # Создаем папку для отчетов, если её нет
@@ -51,6 +52,15 @@ except Exception as e:
 reports_storage: Dict[str, Dict[str, Any]] = {}
 
 
+# Для полноценного отображения на странице
+def json_unicode(data, status=200):
+    """Возвращает JSON с поддержкой Unicode"""
+    response = make_response(json.dumps(
+        data, ensure_ascii=False, indent=2), status)
+    response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
+
+
 def apply_rules_to_ast(ast) -> List[Violation]:
     """
     Применяет все правила к AST и возвращает список нарушений
@@ -72,8 +82,7 @@ def collect_statistics(ast) -> Dict[str, Any]:
 
     # Объединяем их
     composite = VisitorFactory.create_composite_visitor(
-        [var_collector, func_collector]
-    )
+        [var_collector, func_collector])
 
     # Обходим AST
     ast.accept(composite)
@@ -152,7 +161,7 @@ def get_rules():
             }
         )
 
-    return jsonify({"total": len(rules_list), "rules": rules_list}), 200
+    return json_unicode({"total": len(rules_list), "rules": rules_list}), 200
 
 
 @app.route("/api/analyze/code", methods=["POST"])
@@ -186,8 +195,9 @@ def analyze_code():
         # 2. Проверяем парсер
         if parser is None:
             return (
-                jsonify({"error": "Парсер не инициализирован",
-                         "code": "PARSER_ERROR"}),
+                jsonify(
+                    {"error": "Парсер не инициализирован",
+                     "code": "PARSER_ERROR"}),
                 500,
             )
 
@@ -224,7 +234,7 @@ def analyze_code():
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e), "code": "ANALYSIS_ERROR"}), 500
+        return json_unicode({"error": str(e), "code": "ANALYSIS_ERROR"}), 500
 
 
 @app.route("/api/reports/<report_id>", methods=["GET"])
@@ -243,28 +253,32 @@ def get_report(report_id: str):
         if os.path.exists(file_path):
             with open(file_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return jsonify(data), 200
+            return json_unicode(data), 200
 
-        return jsonify({"error": "Отчет не найден",
-                        "code": "REPORT_NOT_FOUND"}), 404
+        return (
+            json_unicode(
+                {"error": "Отчет не найден", "code": "REPORT_NOT_FOUND"}),
+            404,
+        )
 
     except Exception as e:
-        return jsonify({"error": str(e), "code": "REPORT_ERROR"}), 500
+        return json_unicode({"error": str(e), "code": "REPORT_ERROR"}), 500
 
 
 @app.errorhandler(404)
 def not_found(error):
     """Обработка 404 ошибки"""
-    return jsonify({"error": "Эндпоинт не найден",
-                    "code": "NOT_FOUND"}), 404
+    return json_unicode(
+        {"error": "Эндпоинт не найден",
+         "code": "NOT_FOUND"}), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
     """Обработка 500 ошибки"""
     return (
-        jsonify({"error": "Внутренняя ошибка сервера",
-                 "code": "INTERNAL_ERROR"}),
+        json_unicode(
+            {"error": "Внутренняя ошибка сервера", "code": "INTERNAL_ERROR"}),
         500,
     )
 
@@ -272,21 +286,22 @@ def internal_error(error):
 # Запуск сервера
 
 if __name__ == "__main__":
-    print("\n" + "=" * 60)
-    print("ЗАПУСК REST API ДЛЯ АНАЛИЗАТОРА 1С")
-    print("=" * 60)
-    print(f"Корень проекта: {project_root}")
-    print(f"Папка отчетов: {REPORTS_DIR}")
-    print(f"Парсер готов: {parser is not None}")
-    print(f"Правил загружено: {len(rules)}")
-    print("\n📡 Доступные эндпоинты:")
-    print("   GET  /api/health")
-    print("   GET  /api/rules")
-    print("   POST /api/analyze/code")
-    print("   POST /api/analyze/file")
-    print("   GET  /api/reports/<id>")
-    print("\n" + "=" * 60)
-    print("Сервер запущен на http://127.0.0.1:5000")
-    print("=" * 60 + "\n")
+    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        print("\n" + "=" * 60)
+        print("ЗАПУСК REST API ДЛЯ АНАЛИЗАТОРА 1С")
+        print("=" * 60)
+        print(f"Корень проекта: {project_root}")
+        print(f"Папка отчетов: {REPORTS_DIR}")
+        print(f"Парсер готов: {parser is not None}")
+        print(f"Правил загружено: {len(rules)}")
+        print("\n📡 Доступные эндпоинты:")
+        print("   GET  /api/health")
+        print("   GET  /api/rules")
+        print("   POST /api/analyze/code")
+        print("   POST /api/analyze/file")
+        print("   GET  /api/reports/<id>")
+        print("\n" + "=" * 60)
+        print("Сервер запущен на http://127.0.0.1:5000")
+        print("=" * 60 + "\n")
 
     app.run(debug=True, host="0.0.0.0", port=5000)
