@@ -27,7 +27,7 @@ CORS(app)  # Разрешаем запросы из браузера и 1С
 
 # Конфигурация
 JAR_PATH = os.path.join(
-    project_root, "lib", "bsl-language-server-0.28.4-exec.jar")
+    project_root, "lib", "bsl-language-server-0.24.0-exec.jar")
 REPORTS_DIR = os.path.join(project_root, "reports")
 
 # Создаем папку для отчетов, если её нет
