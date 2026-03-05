@@ -26,7 +26,8 @@ class AntlrBSLParser:
                      module_name: str = "module.bsl") -> ModuleNode:
         print(f"📝 Парсинг модуля: {module_name}")
         print(f"📏 Длина кода: {len(code)} символов")
-
+        print(f"📌 Код в repr: {repr(code)}")
+        
         input_stream = InputStream(code)
         lexer = BSLLexer(input_stream)
         stream = CommonTokenStream(lexer)

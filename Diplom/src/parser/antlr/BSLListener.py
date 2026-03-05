@@ -62,6 +62,15 @@ class BSLListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by BSLParser#parameter.
+    def enterParameter(self, ctx:BSLParser.ParameterContext):
+        pass
+
+    # Exit a parse tree produced by BSLParser#parameter.
+    def exitParameter(self, ctx:BSLParser.ParameterContext):
+        pass
+
+
     # Enter a parse tree produced by BSLParser#statement.
     def enterStatement(self, ctx:BSLParser.StatementContext):
         pass
@@ -122,6 +131,24 @@ class BSLListener(ParseTreeListener):
 
     # Exit a parse tree produced by BSLParser#expression.
     def exitExpression(self, ctx:BSLParser.ExpressionContext):
+        pass
+
+
+    # Enter a parse tree produced by BSLParser#forStatement.
+    def enterForStatement(self, ctx:BSLParser.ForStatementContext):
+        pass
+
+    # Exit a parse tree produced by BSLParser#forStatement.
+    def exitForStatement(self, ctx:BSLParser.ForStatementContext):
+        pass
+
+
+    # Enter a parse tree produced by BSLParser#whileStatement.
+    def enterWhileStatement(self, ctx:BSLParser.WhileStatementContext):
+        pass
+
+    # Exit a parse tree produced by BSLParser#whileStatement.
+    def exitWhileStatement(self, ctx:BSLParser.WhileStatementContext):
         pass
 
 

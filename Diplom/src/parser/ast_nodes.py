@@ -181,3 +181,17 @@ class AssignmentNode(ASTNode):
         super().__init__(NodeType.ASSIGNMENT, range)
         self.left = left
         self.right = right
+
+
+class ForLoopNode(ASTNode):
+    """Цикл Для"""
+
+    def __init__(self):
+        super().__init__(NodeType.FOR_LOOP)
+        self.counter = None  # имя переменной-счётчика
+        self.start = None  # начальное значение
+        self.end = None  # конечное значение
+        self.body = []  # тело цикла
+
+    def accept(self, visitor: "ASTVisitor"):
+        visitor.visit_for_loop(self)

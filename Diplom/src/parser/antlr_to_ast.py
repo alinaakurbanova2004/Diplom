@@ -9,6 +9,8 @@ from src.parser.ast_nodes import (
     ParameterNode,
     ReturnStatementNode,
     LiteralNode,
+    ForLoopNode,
+    WhileLoopNode
 )
 
 
@@ -70,18 +72,35 @@ class AntlrToAST(BSLVisitor):
 
             self.current_procedure = proc
 
-            # Парсим параметры
+            # Парсим параметры 
             if ctx.parameterList():
                 param_list = ctx.parameterList()
+                print(f"   📊 Список параметров процедуры {
+                    name}: {param_list.getChildCount()} детей")
+            
+                # Перебираем все дочерние элементы
                 for i in range(param_list.getChildCount()):
                     child = param_list.getChild(i)
-                    # Проверяем, что это токен ID
-                    if (
-                        isinstance(child, TerminalNode)
-                        and child.symbol.type == BSLParser.ID
-                    ):
+                    child_type = type(child).__name__
+                    print(f"      Ребенок {i}: {child_type}")
+                
+                    # Если это контекст параметра
+                    if isinstance(child, BSLParser.ParameterContext):
+                        param_node = self.visitParameter(child)
+                        if param_node:
+                            proc.parameters.append(param_node)
+                            print(f"         ✅ Добавлен параметр: {
+                                param_node.name}")
+                
+                    # Запасной вариант: если это прямой ID,
+                    # если нет ParameterContext
+                    elif isinstance(child, TerminalNode) and \
+                            child.symbol.type == BSLParser.ID:
                         param = ParameterNode(child.getText(), False, False)
                         proc.parameters.append(param)
+                        print(f"         ⚠️ Прямой ID параметр: {param.name}")
+        
+            print(f"   ✅ Всего параметров: {len(proc.parameters)}")
 
             # Парсим тело процедуры
             for i in range(ctx.getChildCount()):
@@ -97,13 +116,13 @@ class AntlrToAST(BSLVisitor):
             self.errors.append(f"Ошибка в процедуре: {e}")
             print(f"❌ Ошибка в процедуре: {e}")
             import traceback
-
             traceback.print_exc()
             return None
 
     def visitFunction(self, ctx):
         try:
             name = ctx.ID().getText()
+            print(f"🔍 Найдена функция: {name}")
             func = FunctionNode(name)
 
             self.current_function = func
@@ -111,14 +130,33 @@ class AntlrToAST(BSLVisitor):
             # Парсим параметры
             if ctx.parameterList():
                 param_list = ctx.parameterList()
+                print(f"   📊 Список параметров функции {
+                    name}: {param_list.getChildCount()} детей")
+            
+                # Перебираем все дочерние элементы
                 for i in range(param_list.getChildCount()):
                     child = param_list.getChild(i)
-                    if (
-                        isinstance(child, TerminalNode)
-                        and child.symbol.type == BSLParser.ID
-                    ):
+                    child_type = type(child).__name__
+                    print(f"      Ребенок {i}: {child_type}")
+                
+                    # Если это контекст параметра
+                    if isinstance(child, BSLParser.ParameterContext):
+                        param_node = self.visitParameter(child)
+                        if param_node:
+                            func.parameters.append(
+                                param_node)
+                            print(f" ✅ Добавлен параметр: {param_node.name}")
+                
+                    # Запасной вариант: если это прямой ID
+                    # если нет, ParameterContext
+                    elif isinstance(child, TerminalNode) and \
+                            child.symbol.type == BSLParser.ID:
                         param = ParameterNode(child.getText(), False, False)
                         func.parameters.append(param)
+                        print(f"⚠️ Прямой ID параметр: {param.name}")
+        
+            print(f"   ✅ Всего параметров в функции {name}: {
+                len(func.parameters)}")
 
             # Парсим тело функции
             for i in range(ctx.getChildCount()):
@@ -134,10 +172,42 @@ class AntlrToAST(BSLVisitor):
             self.errors.append(f"Ошибка в функции: {e}")
             print(f"❌ Ошибка в функции: {e}")
             import traceback
-
             traceback.print_exc()
             return None
-
+        
+    def visitParameter(self, ctx):
+        """Обрабатывает параметр функции/процедуры"""
+        try:
+            # Получаем имя параметра (первый ID)
+            name = None
+            for i in range(ctx.getChildCount()):
+                child = ctx.getChild(i)
+                if isinstance(child, TerminalNode) and \
+                   child.symbol.type == BSLParser.ID:
+                    name = child.getText()
+                    break
+        
+            # Проверяем, есть ли ключевое слово Знач
+            by_value = False
+            for i in range(ctx.getChildCount()):
+                child = ctx.getChild(i)
+                if isinstance(child, TerminalNode) and \
+                        child.getText() == "Знач":
+                    by_value = True
+                    break
+        
+            # Проверяем, есть ли значение по умолчанию
+            has_default = ctx.getChildCount() > 2 and \
+                ctx.getChild(2).getText() == "="
+        
+            print(f"      → Параметр: {
+                name}, Знач: {by_value}, умолчание: {has_default}")
+        
+            return ParameterNode(name, by_value, has_default)
+        except Exception as e:
+            self.errors.append(f"Ошибка в параметре: {e}")
+            return None
+        
     def visitReturnStatement(self, ctx):
         try:
             stmt = ReturnStatementNode()
@@ -197,7 +267,97 @@ class AntlrToAST(BSLVisitor):
 
             traceback.print_exc()
             return None
+        
+    def visitForStatement(self, ctx):
+  
+        try:
+            print("🔍 Найден цикл Для")
+        
+            # Создаём узел цикла 
+            for_node = ForLoopNode()
+        
+            # Получаем переменную-счётчик (первый ID после FOR)
+            counter_var = None
+            for i in range(ctx.getChildCount()):
+                child = ctx.getChild(i)
+                if isinstance(child,
+                              TerminalNode
+                              ) and child.symbol.type == BSLParser.ID:
+                    counter_var = child.getText()
+                    print(f"      Счётчик: {counter_var}")
+                    break
+        
+            # Получаем начальное значение (первое выражение)
+            start_expr = None
+            if ctx.expression(0):
+                start_expr = self.visit(ctx.expression(0))
+                print(f"      Начало: {start_expr}")
+        
+            # Получаем конечное значение (второе выражение)
+            end_expr = None
+            if ctx.expression(1):
+                end_expr = self.visit(ctx.expression(1))
+                print(f"      Конец: {end_expr}")
+        
+            # Собираем операторы тела цикла
+            body_statements = []
+            for child in ctx.getChildren():
+                if isinstance(child, BSLParser.StatementContext):
+                    stmt = self.visit(child)
+                    if stmt:
+                        body_statements.append(stmt)
+        
+            print(f"      Операторов в теле: {len(body_statements)}")
+        
+            # Здесь нужно вернуть созданный узел
+            for_node.counter = counter_var
+            for_node.start = start_expr
+            for_node.end = end_expr
+            for_node.body = body_statements
+            return for_node
+        
+        except Exception as e:
+            self.errors.append(f"Ошибка в цикле Для: {e}")
+            print(f"❌ Ошибка в цикле Для: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
+    def visitWhileStatement(self, ctx):
+        """
+        Обрабатывает цикл Пока
+        """
+        try:
+            print("🔍 Найден цикл Пока")
+        
+            # Создаём узел цикла 
+            while_node = WhileLoopNode()
+        
+            # Получаем условие цикла
+            if ctx.expression():
+                while_node.condition = self.visit(ctx.expression())
+                print(f"      Условие: {while_node.condition}")
+        
+            # Собираем операторы тела цикла
+            body_statements = []
+            for child in ctx.getChildren():
+                if isinstance(child, BSLParser.StatementContext):
+                    stmt = self.visit(child)
+                    if stmt:
+                        body_statements.append(stmt)
+        
+            while_node.body = body_statements
+            print(f"      Операторов в теле: {len(body_statements)}")
+        
+            return while_node
+        
+        except Exception as e:
+            self.errors.append(f"Ошибка в цикле Пока: {e}")
+            print(f"❌ Ошибка в цикле Пока: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
     def visit(self, ctx):
         if ctx is None:
             return None
@@ -222,6 +382,12 @@ class AntlrToAST(BSLVisitor):
                 return self.visitPrimaryExpression(ctx)
             elif isinstance(ctx, BSLParser.LiteralContext):
                 return self.visitLiteral(ctx)
+            elif isinstance(ctx, BSLParser.ForStatementContext):
+                return self.visitForStatement(ctx)
+            elif isinstance(ctx, BSLParser.WhileStatementContext):
+                return self.visitWhileStatement(ctx)
+            elif isinstance(ctx, BSLParser.ParameterContext):
+                return self.visitParameter(ctx)
 
             return self.visitChildren(ctx)
         except Exception as e:

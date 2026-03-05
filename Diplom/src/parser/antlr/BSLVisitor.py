@@ -39,6 +39,11 @@ class BSLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by BSLParser#parameter.
+    def visitParameter(self, ctx:BSLParser.ParameterContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by BSLParser#statement.
     def visitStatement(self, ctx:BSLParser.StatementContext):
         return self.visitChildren(ctx)
@@ -71,6 +76,16 @@ class BSLVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by BSLParser#expression.
     def visitExpression(self, ctx:BSLParser.ExpressionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by BSLParser#forStatement.
+    def visitForStatement(self, ctx:BSLParser.ForStatementContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by BSLParser#whileStatement.
+    def visitWhileStatement(self, ctx:BSLParser.WhileStatementContext):
         return self.visitChildren(ctx)
 
 

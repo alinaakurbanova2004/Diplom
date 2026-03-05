@@ -14,6 +14,8 @@ THEN: '\u0422\u043E\u0433\u0434\u0430' ;                  // Тогда
 ELSE_IF: '\u0418\u043D\u0430\u0447\u0435\u0415\u0441\u043B\u0438' ; // ИначеЕсли
 ELSE: '\u0418\u043D\u0430\u0447\u0435' ;                  // Иначе
 END_IF: '\u041A\u043E\u043D\u0435\u0446\u0415\u0441\u043B\u0438' ; // КонецЕсли
+FOR: '\u0414\u043B\u044F' ;                               // Для
+TO: '\u041F\u043E' ;
 WHILE: '\u041F\u043E\u043A\u0430' ;                       // Пока
 LOOP: '\u0426\u0438\u043A\u043B' ;                        // Цикл
 END_LOOP: '\u041A\u043E\u043D\u0435\u0446\u0426\u0438\u043A\u043B\u0430' ; // КонецЦикла
@@ -59,10 +61,13 @@ variableDeclaration: PEREM ID (EXPORT)? ';' ;
 procedure: PROCEDURE ID parameterList? statement* END_PROCEDURE ';'? ;
 function: FUNCTION ID parameterList? statement* END_FUNCTION ';'? ;
 
-parameterList: '(' (ID (',' ID)*)? ')' ;
+parameterList: '(' (parameter (',' parameter)*)? ')' ;
+parameter: ('Знач')? ID ('=' expression)? ;
 
 statement: assignment
          | ifStatement
+         | forStatement
+         | whileStatement
          | returnStatement
          | callStatement
          ;
@@ -81,6 +86,12 @@ callStatement: ID '(' argumentList? ')' ';'? ;
 
 // Выражения с приоритетами
 expression: logicalOrExpression ;
+
+// Цикл Для
+forStatement: FOR ID '=' expression TO expression LOOP statement* END_LOOP ';'? ;
+
+// Цикл Пока (если есть)
+whileStatement: WHILE expression LOOP statement* END_LOOP ';'? ;
 
 logicalOrExpression: logicalAndExpression (OR logicalAndExpression)* ;
 logicalAndExpression: comparisonExpression (AND comparisonExpression)* ;
