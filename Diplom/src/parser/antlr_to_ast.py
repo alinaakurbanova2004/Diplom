@@ -64,7 +64,30 @@ class AntlrToAST(BSLVisitor):
 
             traceback.print_exc()
             return None
-
+    
+    def visitLocalVariableDeclaration(self, ctx):
+        try:
+            name = ctx.ID().getText()
+            print(f"🔍 Найдена локальная переменная: {name}")
+        
+            is_export = (
+                ctx.getChildCount() > 2 and
+                ctx.getChild(2).getText() == "Экспорт"
+            )
+        
+            var_node = VariableNode(name, is_export)
+        
+            # Добавляем к текущей функции или процедуре
+            if self.current_function:
+                self.current_function.local_vars.append(var_node)
+            elif self.current_procedure:
+                self.current_procedure.local_vars.append(var_node)
+        
+            return var_node
+        except Exception as e:
+            self.errors.append(f"Ошибка в локальной переменной: {e}")
+            return None
+    
     def visitProcedure(self, ctx):
         try:
             name = ctx.ID().getText()
@@ -388,6 +411,8 @@ class AntlrToAST(BSLVisitor):
                 return self.visitWhileStatement(ctx)
             elif isinstance(ctx, BSLParser.ParameterContext):
                 return self.visitParameter(ctx)
+            elif isinstance(ctx, BSLParser.LocalVariableDeclarationContext):
+                return self.visitLocalVariableDeclaration(ctx)
 
             return self.visitChildren(ctx)
         except Exception as e:

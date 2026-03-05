@@ -53,10 +53,11 @@ WS: [ \t\r\n]+ -> skip ;
 COMMENT: '//' ~[\r\n]* -> skip ;
 
 // ============ ПАРСЕР (ПРАВИЛА) ============
-file: (moduleDeclaration | variableDeclaration | procedure | function)* EOF;
+file: (moduleDeclaration | variableDeclaration | localVariableDeclaration | procedure | function)* EOF;
 
 moduleDeclaration: PEREM ID (EXPORT)? ';' ;
 variableDeclaration: PEREM ID (EXPORT)? ';' ;
+localVariableDeclaration: PEREM ID ';' ;
 
 procedure: PROCEDURE ID parameterList? statement* END_PROCEDURE ';'? ;
 function: FUNCTION ID parameterList? statement* END_FUNCTION ';'? ;
@@ -70,6 +71,7 @@ statement: assignment
          | whileStatement
          | returnStatement
          | callStatement
+         | localVariableDeclaration
          ;
 
 assignment: ID '=' expression ';'? ;
@@ -78,7 +80,7 @@ ifStatement: IF expression THEN statement* (ELSE statement*)? END_IF ';'? ;
 
 returnStatement: RETURN expression? ';'? ;
 
-// Список аргументов для вызова - теперь принимает любые выражения!
+// Список аргументов для вызова принимает любые выражения
 argumentList: expression (',' expression)* ;
 
 // Вызов процедуры/функции

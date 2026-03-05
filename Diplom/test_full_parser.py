@@ -58,12 +58,21 @@ code5 = """
 КонецПроцедуры
 """
 
+code6 = """
+Перем ГлобальныйСчетчик Экспорт;
+
+Процедура Тест()
+    Перем ЛокальнаяПеременная;
+    ЛокальнаяПеременная = 5;
+КонецПроцедуры
+"""
 test_cases = [
     ("Простые объявления", code1),
     ("Условные операторы", code2),
     ("Циклы", code3),
     ("Сложные выражения", code4),
     ("Вложенные функции", code5),
+    ("Глобальные и локальные переменные", code6)
 ]
 
 for name, code in test_cases:
@@ -75,18 +84,43 @@ for name, code in test_cases:
 
     if module:
         print("Успешно!")
-        print(f"   Переменных: {len(module.variables)}")
-        print(f"   Функций: {len(module.functions)}")
-        print(f"   Процедур: {len(module.procedures)}")
-        # Вывод параметров функций
-        print("Параметры функций:")
+    
+        # ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
+        print(f"\nГлобальные переменные: {len(module.variables)}")
+        if module.variables:
+            for i, var in enumerate(module.variables, 1):
+                экспорт = " (Экспорт)" if var.is_export else ""
+                print(f"   {i}. {var.name}{экспорт}")
+        else:
+            print(" Глобальных переменных нет")
+    
+        # ===== ФУНКЦИИ =====
+        print(f"\n Функции: {len(module.functions)}")
         for func in module.functions:
-            print(f"   Функция '{func.name}': {len(
-                func.parameters)} параметров")
-        # Вывод параметров процедур
-        print("Параметры процедур:")
+            print(f"\n   Функция '{func.name}':")
+            print(f"      Параметров: {len(func.parameters)}")
+            for param in func.parameters:
+                знач = " (по значению)" if param.by_value else ""
+                print(f"         - {param.name}{знач}")
+        
+            # Локальные переменные функции
+            print(f"      Локальных переменных: {len(func.local_vars)}")
+            for var in func.local_vars:
+                print(f"         - {var.name}")
+    
+        # ===== ПРОЦЕДУРЫ =====
+        print(f"\n Процедуры: {len(module.procedures)}")
         for proc in module.procedures:
-            print(f"   Процедура '{proc.name}': {len(
-                proc.parameters)} параметров")
+            print(f"\n   Процедура '{proc.name}':")
+            print(f"      Параметров: {len(proc.parameters)}")
+            for param in proc.parameters:
+                знач = " (по значению)" if param.by_value else ""
+                print(f"         - {param.name}{знач}")
+        
+            # Локальные переменные процедуры
+            print(f"      Локальных переменных: {len(proc.local_vars)}")
+            for var in proc.local_vars:
+                print(f"         - {var.name}")
+
     else:
-        print("Ошибка парсинга!")
+        print("❌ Ошибка парсинга!")

@@ -24,6 +24,11 @@ class BSLVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by BSLParser#localVariableDeclaration.
+    def visitLocalVariableDeclaration(self, ctx:BSLParser.LocalVariableDeclarationContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by BSLParser#procedure.
     def visitProcedure(self, ctx:BSLParser.ProcedureContext):
         return self.visitChildren(ctx)

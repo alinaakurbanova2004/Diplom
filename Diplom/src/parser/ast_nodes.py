@@ -64,6 +64,7 @@ class FunctionNode(ASTNode):
         super().__init__(NodeType.FUNCTION)
         self.name = name
         self.parameters: List["ParameterNode"] = []
+        self.local_vars: List["VariableNode"] = []  # локальные переменные
         self.body: List[ASTNode] = []
 
     def accept(self, visitor: "ASTVisitor"):
@@ -75,6 +76,7 @@ class ProcedureNode(ASTNode):
         super().__init__(NodeType.PROCEDURE)
         self.name = name
         self.parameters: List["ParameterNode"] = []
+        self.local_vars: List["VariableNode"] = []  # локальные переменные
         self.body: List[ASTNode] = []
 
     def accept(self, visitor: "ASTVisitor"):

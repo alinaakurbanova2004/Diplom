@@ -35,6 +35,15 @@ class BSLListener(ParseTreeListener):
         pass
 
 
+    # Enter a parse tree produced by BSLParser#localVariableDeclaration.
+    def enterLocalVariableDeclaration(self, ctx:BSLParser.LocalVariableDeclarationContext):
+        pass
+
+    # Exit a parse tree produced by BSLParser#localVariableDeclaration.
+    def exitLocalVariableDeclaration(self, ctx:BSLParser.LocalVariableDeclarationContext):
+        pass
+
+
     # Enter a parse tree produced by BSLParser#procedure.
     def enterProcedure(self, ctx:BSLParser.ProcedureContext):
         pass
