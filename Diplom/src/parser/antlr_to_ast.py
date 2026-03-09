@@ -10,7 +10,7 @@ from src.parser.ast_nodes import (
     ReturnStatementNode,
     LiteralNode,
     ForLoopNode,
-    WhileLoopNode
+    WhileLoopNode,
 )
 
 
@@ -23,14 +23,18 @@ class AntlrToAST(BSLVisitor):
         self.current_procedure = None
         self.errors = []
 
+        # Поля для сбора переменных
+        self.seen_vars = {}  # словарь:
+        # имя переменной -> список мест использования
+        self.current_scope = []  # стек текущих областей видимости
+
     def visitModuleDeclaration(self, ctx):
         try:
             name = ctx.ID().getText()
             print(f"🔍 Найдено объявление модуля: {name}")
 
             is_export = (
-                ctx.getChildCount() > 2 
-                and ctx.getChild(2).getText() == "Экспорт"
+                ctx.getChildCount() > 2 and ctx.getChild(2).getText() == "Экспорт"
             )
 
             var_node = VariableNode(name, is_export)
@@ -50,8 +54,7 @@ class AntlrToAST(BSLVisitor):
             print(f"🔍 Найдена переменная: {name}")
 
             is_export = (
-                ctx.getChildCount() > 2 
-                and ctx.getChild(2).getText() == "Экспорт"
+                ctx.getChildCount() > 2 and ctx.getChild(2).getText() == "Экспорт"
             )
 
             var_node = VariableNode(name, is_export)
@@ -64,82 +67,217 @@ class AntlrToAST(BSLVisitor):
 
             traceback.print_exc()
             return None
-    
+
     def visitLocalVariableDeclaration(self, ctx):
         try:
-            name = ctx.ID().getText()
-            print(f"🔍 Найдена локальная переменная: {name}")
-        
-            is_export = (
-                ctx.getChildCount() > 2 and
-                ctx.getChild(2).getText() == "Экспорт"
-            )
-        
+            # Получаем имя переменной (первый ID)
+            name = None
+            for i in range(ctx.getChildCount()):
+                child = ctx.getChild(i)
+                if (
+                    isinstance(child, TerminalNode)
+                    and child.symbol.type == BSLParser.ID
+                ):
+                    name = child.getText()
+                    break
+
+            if name is None:
+                return None
+
+            is_export = False
+
             var_node = VariableNode(name, is_export)
-        
-            # Добавляем к текущей функции или процедуре
-            if self.current_function:
-                self.current_function.local_vars.append(var_node)
-            elif self.current_procedure:
-                self.current_procedure.local_vars.append(var_node)
-        
             return var_node
+
         except Exception as e:
-            self.errors.append(f"Ошибка в локальной переменной: {e}")
+            self.errors.append(f"Ошибка в объявлении локальной переменной: {e}")
+            print(f"❌ Ошибка в локальной переменной: {e}")
             return None
-    
+
+    def _process_statement(self, stmt_ctx, container):
+        # Перебираем все дочерние элементы statement'а
+        for j in range(stmt_ctx.getChildCount()):
+            inner_child = stmt_ctx.getChild(j)
+
+            # Если это присваивание
+            if isinstance(inner_child, BSLParser.AssignmentContext):
+                self.visitAssignment(inner_child)
+                print("Найдено присваивание")
+
+            # Если это цикл Для
+            elif isinstance(inner_child, BSLParser.ForStatementContext):
+                print("Найден цикл Для")
+                # Обрабатываем тело цикла
+                for k in range(inner_child.getChildCount()):
+                    loop_child = inner_child.getChild(k)
+                    if isinstance(loop_child, BSLParser.StatementContext):
+                        self._process_statement(loop_child, container)
+
+            # Если это цикл Пока
+            elif isinstance(inner_child, BSLParser.WhileStatementContext):
+                print("Найден цикл Пока")
+                for k in range(inner_child.getChildCount()):
+                    loop_child = inner_child.getChild(k)
+                    if isinstance(loop_child, BSLParser.StatementContext):
+                        self._process_statement(loop_child, container)
+
+            # Если это условие
+            elif isinstance(inner_child, BSLParser.IfStatementContext):
+                print("Найдено условие")
+                # Обрабатываем все statement'ы внутри условия
+                for k in range(inner_child.getChildCount()):
+                    if_child = inner_child.getChild(k)
+                    if isinstance(if_child, BSLParser.StatementContext):
+                        self._process_statement(if_child, container)
+
+            # Если это локальная переменная
+            elif isinstance(inner_child, BSLParser.LocalVariableDeclarationContext):
+                var_node = self.visitLocalVariableDeclaration(inner_child)
+                if var_node:
+                    container.local_vars.append(var_node)
+                    print(f"✅ Добавлена локальная переменная: {var_node.name}")
+
+            # Если это return statement
+            elif isinstance(inner_child, BSLParser.ReturnStatementContext):
+                stmt = self.visitReturnStatement(inner_child)
+                if stmt:
+                    container.body.append(stmt)
+
+                # Рекурсивно обрабатываем вложенные statement'ы
+            elif isinstance(inner_child, BSLParser.StatementContext):
+                self._process_statement(inner_child, container)
+            elif isinstance(inner_child, BSLParser.ExpressionContext):
+                self._process_expression(inner_child, container)
+
     def visitProcedure(self, ctx):
         try:
             name = ctx.ID().getText()
             proc = ProcedureNode(name)
 
             self.current_procedure = proc
-
-            # Парсим параметры 
+            self.current_scope.append(f"procedure:{name}")
+            # Парсим параметры
             if ctx.parameterList():
                 param_list = ctx.parameterList()
-                print(f"   📊 Список параметров процедуры {
-                    name}: {param_list.getChildCount()} детей")
-            
+                print(
+                    f"   📊 Список параметров процедуры {name}: {param_list.getChildCount()} детей"
+                )
+
                 # Перебираем все дочерние элементы
                 for i in range(param_list.getChildCount()):
                     child = param_list.getChild(i)
                     child_type = type(child).__name__
                     print(f"      Ребенок {i}: {child_type}")
-                
+
                     # Если это контекст параметра
                     if isinstance(child, BSLParser.ParameterContext):
                         param_node = self.visitParameter(child)
                         if param_node:
                             proc.parameters.append(param_node)
-                            print(f"         ✅ Добавлен параметр: {
-                                param_node.name}")
-                
+                            print(
+                                f" ✅ Добавлен параметр: {param_node.name}"
+                            )
+
                     # Запасной вариант: если это прямой ID,
                     # если нет ParameterContext
-                    elif isinstance(child, TerminalNode) and \
-                            child.symbol.type == BSLParser.ID:
+                    elif (
+                        isinstance(child, TerminalNode)
+                        and child.symbol.type == BSLParser.ID
+                    ):
                         param = ParameterNode(child.getText(), False, False)
                         proc.parameters.append(param)
                         print(f"         ⚠️ Прямой ID параметр: {param.name}")
-        
+
             print(f"   ✅ Всего параметров: {len(proc.parameters)}")
 
             # Парсим тело процедуры
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
-                if isinstance(child, BSLParser.ReturnStatementContext):
-                    stmt = self.visitReturnStatement(child)
-                    if stmt:
-                        proc.body.append(stmt)
+                # Проверяем, является ли ребенок statement'ом
+                if isinstance(child, BSLParser.StatementContext):
+                    # Обрабатываем statement
+                    self._process_statement(child, proc)
 
+            self.current_scope.pop()
             self.current_procedure = None
             return proc
+
         except Exception as e:
             self.errors.append(f"Ошибка в процедуре: {e}")
             print(f"❌ Ошибка в процедуре: {e}")
             import traceback
+
             traceback.print_exc()
+            return None
+
+    def visitVariable(self, ctx):
+        """
+        Обрабатывает использование переменной и собирает информацию о ней
+        """
+        try:
+            var_name = ctx.getText()
+            # Определяем контекст
+            current_context = None
+            if self.current_function:
+                current_context = self.current_function
+            elif self.current_procedure:
+                current_context = self.current_procedure
+
+            # Получаем текущую область видимости
+            if self.current_scope:
+                scope = "/".join(self.current_scope)
+            else:
+                scope = "global"
+
+            # Запоминаем это использование переменной
+            if var_name not in self.seen_vars:
+                self.seen_vars[var_name] = []
+
+            self.seen_vars[var_name].append(
+                {
+                    "scope": scope,
+                    "line": ctx.start.line if hasattr(ctx, "start") else 0,
+                    "context": current_context,
+                }
+            )
+
+            # Если мы внутри функции/процедуры
+            if current_context:
+                # Проверяем, не является ли эта переменная параметром
+                is_parameter = False
+                for param in current_context.parameters:
+                    if param.name == var_name:
+                        is_parameter = True
+                        break
+
+                # Если не параметр и мы её ещё не добавляли как локальную
+                if not is_parameter:
+                    # Проверяем, есть ли уже такая переменная в local_vars
+                    exists = False
+                    for var in current_context.local_vars:
+                        if var.name == var_name:
+                            exists = True
+                            break
+
+                    if not exists:
+                        # Добавляем как локальную переменную
+                        var_node = VariableNode(var_name, False)
+                        current_context.local_vars.append(var_node)
+                        indent = (
+                            "         "
+                            if self.current_function or self.current_procedure
+                            else ""
+                        )
+                        print(
+                            f"{
+                                indent} Найдена локальная переменная: {var_name} (в {scope})"
+                        )
+
+            # ВСЕГДА возвращаем узел переменной!
+            return VariableNode(var_name, False)
+
+        except Exception as e:
+            self.errors.append(f"Ошибка при обработке переменной: {e}")
             return None
 
     def visitFunction(self, ctx):
@@ -149,55 +287,59 @@ class AntlrToAST(BSLVisitor):
             func = FunctionNode(name)
 
             self.current_function = func
-
+            self.current_scope.append(f"function:{name}")
             # Парсим параметры
             if ctx.parameterList():
                 param_list = ctx.parameterList()
-                print(f"   📊 Список параметров функции {
-                    name}: {param_list.getChildCount()} детей")
-            
+                print(
+                    f"   📊 Список параметров функции {name}: {param_list.getChildCount()} детей"
+                )
+
                 # Перебираем все дочерние элементы
                 for i in range(param_list.getChildCount()):
                     child = param_list.getChild(i)
                     child_type = type(child).__name__
                     print(f"      Ребенок {i}: {child_type}")
-                
+
                     # Если это контекст параметра
                     if isinstance(child, BSLParser.ParameterContext):
                         param_node = self.visitParameter(child)
                         if param_node:
-                            func.parameters.append(
-                                param_node)
+                            func.parameters.append(param_node)
                             print(f" ✅ Добавлен параметр: {param_node.name}")
-                
+
                     # Запасной вариант: если это прямой ID
                     # если нет, ParameterContext
-                    elif isinstance(child, TerminalNode) and \
-                            child.symbol.type == BSLParser.ID:
+                    elif (
+                        isinstance(child, TerminalNode)
+                        and child.symbol.type == BSLParser.ID
+                    ):
                         param = ParameterNode(child.getText(), False, False)
                         func.parameters.append(param)
                         print(f"⚠️ Прямой ID параметр: {param.name}")
-        
-            print(f"   ✅ Всего параметров в функции {name}: {
-                len(func.parameters)}")
+
+            print(
+                f" ✅ Всего параметров в функции {name}: {len(func.parameters)}"
+            )
 
             # Парсим тело функции
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
-                if isinstance(child, BSLParser.ReturnStatementContext):
-                    stmt = self.visitReturnStatement(child)
-                    if stmt:
-                        func.body.append(stmt)
 
+                if isinstance(child, BSLParser.StatementContext):
+                    self._process_statement(child, func)
+            self.current_scope.pop()
             self.current_function = None
             return func
+
         except Exception as e:
             self.errors.append(f"Ошибка в функции: {e}")
             print(f"❌ Ошибка в функции: {e}")
             import traceback
+
             traceback.print_exc()
             return None
-        
+
     def visitParameter(self, ctx):
         """Обрабатывает параметр функции/процедуры"""
         try:
@@ -205,32 +347,33 @@ class AntlrToAST(BSLVisitor):
             name = None
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
-                if isinstance(child, TerminalNode) and \
-                   child.symbol.type == BSLParser.ID:
+                if (
+                    isinstance(child, TerminalNode)
+                    and child.symbol.type == BSLParser.ID
+                ):
                     name = child.getText()
                     break
-        
+
             # Проверяем, есть ли ключевое слово Знач
             by_value = False
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
-                if isinstance(child, TerminalNode) and \
-                        child.getText() == "Знач":
+                if isinstance(child, TerminalNode) and child.getText() == "Знач":
                     by_value = True
                     break
-        
+
             # Проверяем, есть ли значение по умолчанию
-            has_default = ctx.getChildCount() > 2 and \
-                ctx.getChild(2).getText() == "="
-        
-            print(f"      → Параметр: {
-                name}, Знач: {by_value}, умолчание: {has_default}")
-        
+            has_default = ctx.getChildCount() > 2 and ctx.getChild(2).getText() == "="
+
+            print(
+                f"      → Параметр: {name}, Знач: {by_value}, умолчание: {has_default}"
+            )
+
             return ParameterNode(name, by_value, has_default)
         except Exception as e:
             self.errors.append(f"Ошибка в параметре: {e}")
             return None
-        
+
     def visitReturnStatement(self, ctx):
         try:
             stmt = ReturnStatementNode()
@@ -259,7 +402,7 @@ class AntlrToAST(BSLVisitor):
     def visitPrimaryExpression(self, ctx):
         try:
             if ctx.ID():
-                return VariableNode(ctx.ID().getText(), False)
+                return self.visitVariable(ctx)
             elif ctx.literal():
                 return self.visit(ctx.literal())
             return None
@@ -290,38 +433,37 @@ class AntlrToAST(BSLVisitor):
 
             traceback.print_exc()
             return None
-        
+
     def visitForStatement(self, ctx):
-  
+
         try:
             print("🔍 Найден цикл Для")
-        
-            # Создаём узел цикла 
+            # Создаём узел цикла
             for_node = ForLoopNode()
-        
+
             # Получаем переменную-счётчик (первый ID после FOR)
             counter_var = None
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
-                if isinstance(child,
-                              TerminalNode
-                              ) and child.symbol.type == BSLParser.ID:
+                if (
+                    isinstance(child, TerminalNode)
+                    and child.symbol.type == BSLParser.ID
+                ):
                     counter_var = child.getText()
                     print(f"      Счётчик: {counter_var}")
                     break
-        
             # Получаем начальное значение (первое выражение)
             start_expr = None
             if ctx.expression(0):
                 start_expr = self.visit(ctx.expression(0))
                 print(f"      Начало: {start_expr}")
-        
+
             # Получаем конечное значение (второе выражение)
             end_expr = None
             if ctx.expression(1):
                 end_expr = self.visit(ctx.expression(1))
                 print(f"      Конец: {end_expr}")
-        
+
             # Собираем операторы тела цикла
             body_statements = []
             for child in ctx.getChildren():
@@ -329,20 +471,21 @@ class AntlrToAST(BSLVisitor):
                     stmt = self.visit(child)
                     if stmt:
                         body_statements.append(stmt)
-        
+
             print(f"      Операторов в теле: {len(body_statements)}")
-        
+
             # Здесь нужно вернуть созданный узел
             for_node.counter = counter_var
             for_node.start = start_expr
             for_node.end = end_expr
             for_node.body = body_statements
             return for_node
-        
+
         except Exception as e:
             self.errors.append(f"Ошибка в цикле Для: {e}")
             print(f"❌ Ошибка в цикле Для: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -352,15 +495,15 @@ class AntlrToAST(BSLVisitor):
         """
         try:
             print("🔍 Найден цикл Пока")
-        
-            # Создаём узел цикла 
+
+            # Создаём узел цикла
             while_node = WhileLoopNode()
-        
+
             # Получаем условие цикла
             if ctx.expression():
                 while_node.condition = self.visit(ctx.expression())
                 print(f"      Условие: {while_node.condition}")
-        
+
             # Собираем операторы тела цикла
             body_statements = []
             for child in ctx.getChildren():
@@ -368,26 +511,27 @@ class AntlrToAST(BSLVisitor):
                     stmt = self.visit(child)
                     if stmt:
                         body_statements.append(stmt)
-        
+
             while_node.body = body_statements
             print(f"      Операторов в теле: {len(body_statements)}")
-        
+
             return while_node
-        
+
         except Exception as e:
             self.errors.append(f"Ошибка в цикле Пока: {e}")
             print(f"❌ Ошибка в цикле Пока: {e}")
             import traceback
+
             traceback.print_exc()
             return None
-    
+
     def visit(self, ctx):
         if ctx is None:
             return None
 
         try:
             # Определяем тип контекста и вызываем соответствующий метод
-            if isinstance(ctx, BSLParser.FileContext):  
+            if isinstance(ctx, BSLParser.FileContext):
                 return self.visitFile(ctx)
             elif isinstance(ctx, BSLParser.ModuleDeclarationContext):
                 return self.visitModuleDeclaration(ctx)
@@ -413,11 +557,14 @@ class AntlrToAST(BSLVisitor):
                 return self.visitParameter(ctx)
             elif isinstance(ctx, BSLParser.LocalVariableDeclarationContext):
                 return self.visitLocalVariableDeclaration(ctx)
+            elif isinstance(ctx, BSLParser.AssignmentContext):
+                return self.visitAssignment(ctx)
 
             return self.visitChildren(ctx)
         except Exception as e:
-            self.errors.append(f"Ошибка при обходе узла {
-                type(ctx).__name__}: {e}")
+            self.errors.append(
+                f"Ошибка при обходе узла {type(ctx).__name__}: {e}"
+            )
             return None
 
     def visitFile(self, ctx):
@@ -478,5 +625,61 @@ class AntlrToAST(BSLVisitor):
             print(error_msg)
             self.errors.append(error_msg)
             import traceback
+
             traceback.print_exc()
+            return None
+
+    def _process_expression(self, expr_ctx, container):
+        """Рекурсивно обходит выражение в поисках переменных"""
+
+        for i in range(expr_ctx.getChildCount()):
+            child = expr_ctx.getChild(i)
+
+            if isinstance(child, BSLParser.PrimaryExpressionContext):
+                self._process_primary_expression(child, container)
+            elif isinstance(child, BSLParser.ExpressionContext):
+                self._process_expression(child, container)
+
+    def _process_primary_expression(self, prim_ctx, container):
+        """Обрабатывает первичное выражение"""
+
+        for i in range(prim_ctx.getChildCount()):
+            child = prim_ctx.getChild(i)
+
+            if isinstance(child, TerminalNode) and child.symbol.type == BSLParser.ID:
+                self.visitVariable(child)
+
+    def visitAssignment(self, ctx):
+        """Обрабатывает оператор присваивания
+        (только для регистрации переменных)"""
+        try:
+            # Находим переменную слева от '='
+            for i in range(ctx.getChildCount()):
+                child = ctx.getChild(i)
+
+                # Если это ID, значит нашли переменную
+                if (
+                    isinstance(child, TerminalNode)
+                    and child.symbol.type == BSLParser.ID
+                ):
+                    var_name = child.getText()
+
+                    # Регистрируем переменную через visitVariable
+                    # Это добавит её в local_vars, если она ещё не там
+                    self.visitVariable(child)
+                    print(f"      📝 Присваивание переменной: {var_name}")
+                    break
+
+            # Обрабатываем правую часть (выражение) -
+            # там могут быть другие переменные
+            for i in range(ctx.getChildCount()):
+                child = ctx.getChild(i)
+                if isinstance(child, BSLParser.ExpressionContext):
+                    self.visit(child)
+                    break
+
+            return None
+
+        except Exception as e:
+            self.errors.append(f"Ошибка в присваивании: {e}")
             return None

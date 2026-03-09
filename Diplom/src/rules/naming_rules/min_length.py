@@ -25,7 +25,7 @@ class VariableMinLength(BaseRule):
 
         # Проверяем переменные модуля
         for var in module.variables:
-            if len(var.name) == 1 and var.name not in self.loop_counters:
+            if len(var.name) == 1 and var.name not in self.loop_counter:
                 violations.append(
                     Violation(
                         rule_code=self.code,
