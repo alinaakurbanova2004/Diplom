@@ -28,26 +28,6 @@ class AntlrToAST(BSLVisitor):
         # имя переменной -> список мест использования
         self.current_scope = []  # стек текущих областей видимости
 
-    def visitModuleDeclaration(self, ctx):
-        try:
-            name = ctx.ID().getText()
-            print(f"🔍 Найдено объявление модуля: {name}")
-
-            is_export = (
-                ctx.getChildCount() > 2 and ctx.getChild(2).getText() == "Экспорт"
-            )
-
-            var_node = VariableNode(name, is_export)
-            return var_node
-
-        except Exception as e:
-            self.errors.append(f"Ошибка в модуле: {e}")
-            print(f"❌ Ошибка в объявлении модуля: {e}")
-            import traceback
-
-            traceback.print_exc()
-            return None
-
     def visitVariableDeclaration(self, ctx):
         try:
             name = ctx.ID().getText()
@@ -533,8 +513,6 @@ class AntlrToAST(BSLVisitor):
             # Определяем тип контекста и вызываем соответствующий метод
             if isinstance(ctx, BSLParser.FileContext):
                 return self.visitFile(ctx)
-            elif isinstance(ctx, BSLParser.ModuleDeclarationContext):
-                return self.visitModuleDeclaration(ctx)
             elif isinstance(ctx, BSLParser.VariableDeclarationContext):
                 return self.visitVariableDeclaration(ctx)
             elif isinstance(ctx, BSLParser.ProcedureContext):
@@ -587,14 +565,15 @@ class AntlrToAST(BSLVisitor):
                 child_type = type(child).__name__
                 print(f"   {child_count}. {child_type}")
 
-                if isinstance(child, BSLParser.ModuleDeclarationContext):
-                    print("      → Это объявление модуля")
-                    var = self.visitModuleDeclaration(child)
+                if isinstance(child, BSLParser.VariableDeclarationContext):
+                    print("      → Это объявление глобальной переменной")
+                    var = self.visitVariableDeclaration(child)
                     if var:
                         self.module.variables.append(var)
-                elif isinstance(child, BSLParser.VariableDeclarationContext):
-                    print("      → Это объявление переменной")
-                    var = self.visitVariableDeclaration(child)
+                elif isinstance(child, 
+                                BSLParser.LocalVariableDeclarationContext):
+                    print("      → Это объявление локальной переменной")
+                    var = self.visitLocalVariableDeclaration(child)
                     if var:
                         self.module.variables.append(var)
                 elif isinstance(child, BSLParser.FunctionContext):

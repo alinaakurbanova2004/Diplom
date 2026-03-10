@@ -48,9 +48,10 @@ class ASTNode:
 
 
 class ModuleNode(ASTNode):
-    def __init__(self, name: str):
+    def __init__(self, name: str, source_file: str = ""):
         super().__init__(NodeType.MODULE)
         self.name = name
+        self.source_file = source_file
         self.variables: List["VariableNode"] = []
         self.functions: List["FunctionNode"] = []
         self.procedures: List["ProcedureNode"] = []

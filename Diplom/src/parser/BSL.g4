@@ -53,9 +53,8 @@ WS: [ \t\r\n]+ -> skip ;
 COMMENT: '//' ~[\r\n]* -> skip ;
 
 // ============ ПАРСЕР (ПРАВИЛА) ============
-file: (moduleDeclaration | variableDeclaration | localVariableDeclaration | procedure | function)* EOF;
+file: (variableDeclaration | localVariableDeclaration | procedure | function)* EOF;
 
-moduleDeclaration: PEREM ID (EXPORT)? ';' ;
 variableDeclaration: PEREM ID (EXPORT)? ';' ;
 localVariableDeclaration: PEREM ID ';' ;
 

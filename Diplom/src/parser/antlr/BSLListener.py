@@ -17,15 +17,6 @@ class BSLListener(ParseTreeListener):
         pass
 
 
-    # Enter a parse tree produced by BSLParser#moduleDeclaration.
-    def enterModuleDeclaration(self, ctx:BSLParser.ModuleDeclarationContext):
-        pass
-
-    # Exit a parse tree produced by BSLParser#moduleDeclaration.
-    def exitModuleDeclaration(self, ctx:BSLParser.ModuleDeclarationContext):
-        pass
-
-
     # Enter a parse tree produced by BSLParser#variableDeclaration.
     def enterVariableDeclaration(self, ctx:BSLParser.VariableDeclarationContext):
         pass
