@@ -1,6 +1,7 @@
 from .antlr.BSLVisitor import BSLVisitor
 from .antlr.BSLParser import BSLParser
 from antlr4.tree.Tree import TerminalNode
+from src.parser.ast_nodes import AssignmentNode
 from src.parser.ast_nodes import (
     ModuleNode,
     FunctionNode,
@@ -64,9 +65,8 @@ class AntlrToAST(BSLVisitor):
             if name is None:
                 return None
 
-            is_export = False
-
-            var_node = VariableNode(name, is_export)
+            var_node = VariableNode(name, False)
+            
             return var_node
 
         except Exception as e:
@@ -115,6 +115,7 @@ class AntlrToAST(BSLVisitor):
                 var_node = self.visitLocalVariableDeclaration(inner_child)
                 if var_node:
                     container.local_vars.append(var_node)
+                    container.body.append(var_node)
                     print(f"✅ Добавлена локальная переменная: {var_node.name}")
 
             # Если это return statement
@@ -632,6 +633,8 @@ class AntlrToAST(BSLVisitor):
         """Обрабатывает оператор присваивания
         (только для регистрации переменных)"""
         try:
+            left_node = None
+            right_node = None
             # Находим переменную слева от '='
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
@@ -645,7 +648,7 @@ class AntlrToAST(BSLVisitor):
 
                     # Регистрируем переменную через visitVariable
                     # Это добавит её в local_vars, если она ещё не там
-                    self.visitVariable(child)
+                    left_node = self.visitVariable(child)
                     print(f"      📝 Присваивание переменной: {var_name}")
                     break
 
@@ -654,8 +657,19 @@ class AntlrToAST(BSLVisitor):
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
                 if isinstance(child, BSLParser.ExpressionContext):
-                    self.visit(child)
+                    right_node = self.visit(child)
                     break
+
+            if left_node and right_node:
+                assign_node = AssignmentNode(left_node, right_node)
+
+                if self.current_procedure:
+                    self.current_procedure.body.append(assign_node)
+                    print(" Добавлен узел присваивания в процедуру")
+                elif self.current_function:
+                    self.current_function.body.append(assign_node)
+                    print("Добавлен узел присваивания в функцию")
+                return assign_node
 
             return None
 

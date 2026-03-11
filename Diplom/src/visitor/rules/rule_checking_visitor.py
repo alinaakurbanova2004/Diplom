@@ -17,8 +17,8 @@ class RuleCheckingVisitor(ASTVisitor):
         self.current_module = node
         for rule in self.rules:  
             try:
-                self.violations = rule.check(node)
-                self.violations.extend(self.violations)
+                new_violations = rule.check(node)
+                self.violations.extend(new_violations)
             except Exception as e:
                 print(f"Ошибка в правиле {rule.code}: {e}")
         super().visit_module(node)

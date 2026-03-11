@@ -42,47 +42,23 @@ class TooManyParameters(BaseRule):
         violations = []
         total_params = len(node.parameters)
         default_params = sum(1 for p in node.parameters if p.has_default_value)
-
+        messages = []
+        
         if total_params > self.max_total_params:
-            violations.append(
-                self._create_violation(
-                    node=node,
-                    module=module,
-                    message=(
-                        f"{node.__class__.__name__} '{node.name}' имеет "
-                        f"{total_params} параметров. "
-                        f"Рекомендуется не более {self.max_total_params}"
-                    ),
-                )
-            )
-
-        elif default_params > self.max_default_params:
-            violations.append(
-                self._create_violation(
-                    node=node,
-                    module=module,
-                    message=(
-                        f"{node.__class__.__name__} '{node.name}' имеет "
-                        f"{default_params} параметров"
-                        f"со значениями по умолчанию. "
-                        f"Рекомендуется не более {self.max_default_params}"
-                    ),
-                )
-            )
-
+            messages.append(f"всего параметров {total_params} (макс. {self.max_total_params})")
+    
+        if default_params > self.max_default_params:
+            messages.append(f"параметров с умолчанием {default_params} (макс. {self.max_default_params})")
+    
         if not self._are_defaults_at_end(node.parameters):
-            violations.append(
-                self._create_violation(
-                    node=node,
-                    module=module,
-                    message=(
-                        f"{node.__class__.__name__} '{node.name}': "
-                        f"параметры со значениями по умолчанию должны быть "
-                        f"в конце списка параметров"
-                    ),
-                )
-            )
-
+            messages.append("параметры с умолчанием не в конце")
+    
+        if messages:
+            violations.append(self._create_violation(
+                node, module,
+                f"{node.__class__.__name__} '{node.name}': " + "; ".join(messages)
+            ))
+      
         return violations
 
     def _are_defaults_at_end(self, parameters: list) -> bool:

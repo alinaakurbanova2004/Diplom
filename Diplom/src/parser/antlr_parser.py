@@ -88,4 +88,6 @@ class AntlrBSLParser:
         """Парсит файл .bsl"""
         with open(file_path, "r", encoding="utf-8") as f:
             code = f.read()
-        return self.parse_string(code, file_path)
+        module = self.parse_string(code, file_path)
+        module.source_file = file_path
+        return module

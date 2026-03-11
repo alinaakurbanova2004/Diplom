@@ -1,5 +1,5 @@
 from typing import List
-from src.parser.ast_nodes import ModuleNode, VariableNode
+from src.parser.ast_nodes import ModuleNode
 from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
@@ -46,47 +46,26 @@ class MeaningfulVariable(BaseRule):
             "обр",
         ]
 
-        # Список "хороших" слов-маркеров
-        self.good_markers = [
-            "Количество",
-            "Сумма",
-            "Цена",
-            "Наименование",
-            "Код",
-            "Идентификатор",
-            "Дата",
-            "Время",
-            "Период",
-            "Статус",
-        ]
-
     def check(self, module: ModuleNode) -> List[Violation]:
         violations = []
 
+        # Проверяем глобальные переменные
         for var in module.variables:
             if self._is_bad_variable_name(var.name):
-                violations.append(
-                    Violation(
-                        rule_code=self.code,
-                        rule_name=self.name,
-                        severity=self.severity,
-                        module_name=module.name,
-                        line=var.range.start.line if var.range else 0,
-                        column=var.range.start.column if var.range else 0,
-                        message=(
-                            f"Переменная '{var.name}' имеет"
-                            f"непонятное назначение."
-                            f"Используйте полные"
-                            f"названия из предметной области")
-                        )
-                )
+                violations.append(self._create_violation(var, module))
+
+        for proc in module.procedures:
+            for var in proc.local_vars:
+
+                if self._is_bad_variable_name(var.name):
+                    violations.append(self._create_violation(var, module, proc.name)) 
 
         # Проверяем локальные переменные в процедурах
-        for proc in module.procedures:
-            for node in proc.body:
-                if isinstance(node, VariableNode):
-                    if self._is_bad_variable_name(node.name):
-                        violations.append(Violation(...))
+        for func in module.functions:
+            for var in func.local_vars:
+
+                if self._is_bad_variable_name(var.name):
+                    violations.append(self._create_violation(var, module, func.name))
 
         return violations
 
@@ -94,6 +73,10 @@ class MeaningfulVariable(BaseRule):
         """Проверка, плохое ли имя переменной"""
         name_lower = name.lower()
 
+        # СЛИШКОМ КОРОТКИЕ ИМЕНА (1-2 символа)
+        if len(name) <= 2:
+            return True
+        
         # Проверка на плохие сокращения
         for bad in self.bad_abbreviations:
             if (
@@ -102,15 +85,24 @@ class MeaningfulVariable(BaseRule):
                 or name_lower.endswith("_" + bad)
             ):
                 return True
-
-        # Проверка на наличие хороших маркеров
-        has_good_marker = False
-        for marker in self.good_markers:
-            if marker.lower() in name_lower:
-                has_good_marker = True
-                break
-
-        if len(name) > 10 and not has_good_marker:
-            return True
+            if bad in name_lower.split('_'):
+                return True
 
         return False
+
+    def _create_violation(self, var, module, context=None):
+        """Создаёт объект нарушения"""
+        context_info = f" в {context}" if context else ""
+        return Violation(
+            rule_code=self.code,
+            rule_name=self.name,
+            severity=self.severity,
+            module_name=module.name,
+            line=var.range.start.line if var.range else 0,
+            column=var.range.start.column if var.range else 0,
+            message=(
+                f"Переменная '{var.name}'{context_info} имеет "
+                f"непонятное назначение. Используйте полные "
+                f"названия из предметной области"
+            ),
+        )
