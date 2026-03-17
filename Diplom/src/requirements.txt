@@ -1,3 +1,4 @@
+antlr4-python3-runtime
 flask==2.3.3
 flask-cors==4.0.0
 pydantic==2.5.0
