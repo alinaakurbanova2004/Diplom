@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from src.rules import naming_rules, procedure_function_rules
+from src.rules import naming_rules, procedure_rules
 from .base_rule import BaseRule
 
 
@@ -37,11 +37,11 @@ class RuleRegistry:
             naming_rules.VariableMinLength(),
             naming_rules.WithoutUnderscorePrefix(),
             # Правила для процедур/функций
-            procedure_function_rules.EmptyProcedure(),
-            procedure_function_rules.MissingProcedureComment(),
-            procedure_function_rules.OneStatementPerLine(),
-            procedure_function_rules.ProcedureLength(),
-            procedure_function_rules.TooManyParameters(),
+            procedure_rules.EmptyProcedure(),
+            procedure_rules.MissingProcedureComment(),
+            procedure_rules.OneStatementPerLine(),
+            procedure_rules.ProcedureLength(),
+            procedure_rules.TooManyParameters(),
         ]
 
         for rule in rules:

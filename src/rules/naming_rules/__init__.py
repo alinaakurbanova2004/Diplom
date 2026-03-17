@@ -1,4 +1,4 @@
-from .camel_case import CamelCase
+from .camelcase import CamelCase
 from .flag_names import FlagVariableNames
 from .meaningful import MeaningfulVariable
 from .min_length import VariableMinLength
