@@ -3,9 +3,8 @@ from src.parser.ast_nodes import ModuleNode
 from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
-
 class ProcedureLength(BaseRule):
-    """Процедура не должна быть слишком длинной"""
+    """Правило FUN-03: Процедура не должна быть слишком длинной"""
 
     def __init__(self):
         self.code = "FUN-03"
@@ -18,21 +17,21 @@ class ProcedureLength(BaseRule):
         violations = []
 
         for proc in module.procedures:
-            if proc.range:
-                lines_count = proc.range.end.line - proc.range.start.line
-                if lines_count > self.max_lines:
-                    violations.append(
-                        Violation(
-                            rule_code=self.code,
-                            rule_name=self.name,
-                            severity=self.severity,
-                            module_name=module.name,
-                            line=proc.range.start.line,
-                            column=proc.range.start.column,
-                            message=f"Процедура '{proc.name}' слишком длинная"
-                            f"({lines_count} строк)."
-                            f"Рекомендуется не более {self.max_lines} строк",
-                        )
+            if not proc.range:
+                continue
+            
+            lines_count = proc.range.end.line - proc.range.start.line
+            if lines_count > self.max_lines:
+                violations.append(
+                    Violation(
+                        rule_code=self.code,
+                        rule_name=self.name,
+                        severity=self.severity,
+                        module_name=module.name,
+                        line=proc.range.start.line,
+                        column=proc.range.start.column,
+                        message=f"Процедура '{proc.name}' слишком длинная ({lines_count} строк). Рекомендуется не более {self.max_lines} строк.",
                     )
+                )
 
         return violations

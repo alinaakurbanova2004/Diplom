@@ -48,8 +48,8 @@ class ASTNode:
 
 
 class ModuleNode(ASTNode):
-    def __init__(self, name: str, source_file: str = ""):
-        super().__init__(NodeType.MODULE)
+    def __init__(self, name: str, source_file: str = "", range: Range = None):
+        super().__init__(NodeType.MODULE, range)
         self.name = name
         self.source_file = source_file
         self.variables: List["VariableNode"] = []
@@ -61,8 +61,8 @@ class ModuleNode(ASTNode):
 
 
 class FunctionNode(ASTNode):
-    def __init__(self, name: str):
-        super().__init__(NodeType.FUNCTION)
+    def __init__(self, name: str, range: Range = None):
+        super().__init__(NodeType.FUNCTION,range)
         self.name = name
         self.parameters: List["ParameterNode"] = []
         self.local_vars: List["VariableNode"] = []  # локальные переменные
@@ -73,8 +73,8 @@ class FunctionNode(ASTNode):
 
 
 class ProcedureNode(ASTNode):
-    def __init__(self, name: str):
-        super().__init__(NodeType.PROCEDURE)
+    def __init__(self, name: str, range: Range = None):
+        super().__init__(NodeType.PROCEDURE,range)
         self.name = name
         self.parameters: List["ParameterNode"] = []
         self.local_vars: List["VariableNode"] = []  # локальные переменные
@@ -87,9 +87,9 @@ class ProcedureNode(ASTNode):
 class ParameterNode(ASTNode):
     def __init__(
         self, name: str, by_value: bool = False, has_default_value: 
-            bool = False
+            bool = False, range: Range = None
     ):
-        super().__init__(NodeType.PARAMETER)
+        super().__init__(NodeType.PARAMETER, range)
         self.name = name
         self.by_value = by_value
         self.has_default_value = has_default_value
@@ -99,27 +99,24 @@ class ParameterNode(ASTNode):
 
 
 class VariableNode(ASTNode):
-    def __init__(self, name: str, is_export: bool = False):
-        super().__init__(NodeType.VARIABLE)
+    def __init__(self, name: str, is_export: bool = False, range: Range = None):
+        super().__init__(NodeType.VARIABLE, range)  
         self.name = name
         self.is_export = is_export
-
-    def accept(self, visitor: "ASTVisitor"):
-        visitor.visit_variable(self)
 
 
 class ExpressionNode(ASTNode):
     """Базовый класс для выражений"""
 
-    def __init__(self, node_type: NodeType):
-        super().__init__(node_type)
+    def __init__(self, node_type: NodeType, range: Range = None):
+        super().__init__(node_type, range)
 
 
 class BinaryOperationNode(ExpressionNode):
     """Бинарная операция (a + b, a > b, и т.д.)"""
 
-    def __init__(self, operator: str, left: ASTNode, right: ASTNode):
-        super().__init__(NodeType.BINARY_OPERATION)
+    def __init__(self, operator: str, left: ASTNode, right: ASTNode, range: Range = None):
+        super().__init__(NodeType.BINARY_OPERATION, range)
         self.operator = operator
         self.left = left
         self.right = right
@@ -131,8 +128,8 @@ class BinaryOperationNode(ExpressionNode):
 class LiteralNode(ExpressionNode):
     """Литерал (число, строка, булево значение)"""
 
-    def __init__(self, value: any, literal_type: str):
-        super().__init__(NodeType.LITERAL)
+    def __init__(self, value: any, literal_type: str, range: Range = None):
+        super().__init__(NodeType.LITERAL, range)
         self.value = value
         self.literal_type = literal_type
 
@@ -143,8 +140,8 @@ class LiteralNode(ExpressionNode):
 class IfStatementNode(ASTNode):
     """Оператор Если"""
 
-    def __init__(self):
-        super().__init__(NodeType.IF_STATEMENT)
+    def __init__(self, range: Range = None):
+        super().__init__(NodeType.IF_STATEMENT, range)
         self.condition = None  # условие
         self.then_branch = []  # операторы в Тогда
         self.else_branch = []  # операторы в Иначе
@@ -157,8 +154,8 @@ class IfStatementNode(ASTNode):
 class WhileLoopNode(ASTNode):
     """Цикл Пока"""
 
-    def __init__(self):
-        super().__init__(NodeType.WHILE_LOOP)
+    def __init__(self, range: Range = None):
+        super().__init__(NodeType.WHILE_LOOP, range)
         self.condition = None  # условие
         self.body = []  # тело цикла
 
@@ -169,8 +166,8 @@ class WhileLoopNode(ASTNode):
 class ReturnStatementNode(ASTNode):
     """Оператор Возврат"""
 
-    def __init__(self):
-        super().__init__(NodeType.RETURN_STATEMENT)
+    def __init__(self, range: Range = None):
+        super().__init__(NodeType.RETURN_STATEMENT, range)
         self.expression = None  # выражение (может быть None)
 
     def accept(self, visitor: "ASTVisitor"):
@@ -189,8 +186,8 @@ class AssignmentNode(ASTNode):
 class ForLoopNode(ASTNode):
     """Цикл Для"""
 
-    def __init__(self):
-        super().__init__(NodeType.FOR_LOOP)
+    def __init__(self, range: Range = None):
+        super().__init__(NodeType.FOR_LOOP, range)
         self.counter = None  # имя переменной-счётчика
         self.start = None  # начальное значение
         self.end = None  # конечное значение

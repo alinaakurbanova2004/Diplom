@@ -13,8 +13,9 @@ class VariableMinLength(BaseRule):
     def __init__(self):
         self.code = "VAR-04"
         self.name = "Минимальная длина имени"
-        self.description = "Имена переменных должны"
-        "быть длиннее одного символа (исключение: счетчики циклов)"
+        self.description = (
+        "Имена переменных должны быть длиннее одного символа "
+        "(исключение: счетчики циклов)")
         self.severity = "WARNING"
 
         # Допустимые односимвольные имена для счетчиков
@@ -26,30 +27,37 @@ class VariableMinLength(BaseRule):
         # Проверяем глобальные переменные модуля
         for var in module.variables:
             if len(var.name) == 1 and var.name not in self.loop_counters:
-                violations.append(self._create_violation(var, module))
+                line = var.range.start.line if var.range else 0
+                col = var.range.start.column if var.range else 0
+                violations.append(self._create_violation(var, module, None, line, col))
 
         # Проверяем локальные переменные в процедурах
         for proc in module.procedures:
             for var in proc.local_vars:
                 if len(var.name) == 1 and var.name not in self.loop_counters:
-                    violations.append(self._create_violation(var, module, proc.name))
+                    line = var.range.start.line if var.range else 0
+                    col = var.range.start.column if var.range else 0
+                    violations.append(self._create_violation(var, module, proc.name, line, col))
 
         # Проверяем локальные переменные в функциях
         for func in module.functions:
             for var in func.local_vars:
                 if len(var.name) == 1 and var.name not in self.loop_counters:
-                    violations.append(self._create_violation(var, module, func.name))
+                    line = var.range.start.line if var.range else 0
+                    col = var.range.start.column if var.range else 0
+                    violations.append(self._create_violation(var, module, func.name, line, col))
+    
         return violations
 
-    def _create_violation(self, var, module, context=None):
+    def _create_violation(self, var, module, context=None, line=0, col=0):
         context_info = f" в {context}" if context else ""
         return Violation(
             rule_code=self.code,
             rule_name=self.name,
             severity=self.severity,
             module_name=module.name,
-            line=var.range.start.line if var.range else 0,
-            column=var.range.start.column if var.range else 0,
+            line=line,          # ← используем переданное значение
+            column=col,         # ← используем переданное значение
             message=(
                 f"Переменная '{var.name}'{context_info} состоит из одного символа. "
                 f"Дайте ей осмысленное имя."

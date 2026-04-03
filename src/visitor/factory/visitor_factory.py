@@ -36,11 +36,6 @@ class VisitorFactory:
 
         return FunctionCollector()
 
-    @staticmethod
-    def create_call_collector():
-        from src.visitor.collectors.call_collector import CallCollector
-
-        return CallCollector()
 
     @staticmethod
     def create_data_flow_visitor():

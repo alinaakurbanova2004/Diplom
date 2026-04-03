@@ -5,7 +5,8 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import List, Dict, Any, Optional
-from src.rules.base_rule import BaseRule, Violation
+from src.rules.base_rule import BaseRule
+from src.rules.violation import Violation
 
 
 class DatabaseConnection:
@@ -102,6 +103,7 @@ class ViolationRepository:
     
     def __init__(self, db: DatabaseConnection):
         self.db = db
+
     
     def save_violation(self, violation: Violation, rule_id: int, module_id: int = None) -> int:
         """Сохраняет одно нарушение в БД"""
@@ -118,17 +120,21 @@ class ViolationRepository:
             violation.message,
             getattr(violation, 'code_snippet', '')
         )
-        result = self.db.execute_query(query, params)
-        return result[0]['id'] if result else None
     
-    def save_violations(self, violations: List[Violation], rule_id: int, module_id: int = None) -> int:
-        """Сохраняет список нарушений"""
-        count = 0
-        for v in violations:
-            self.save_violation(v, rule_id, module_id)
-            count += 1
-        return count
-
+        print(f"💾 SQL: {query % params}")
+    
+        try:
+            # Используем execute_non_query для INSERT с RETURNING
+            with self.db.conn.cursor() as cur:
+                cur.execute(query, params)
+                inserted_id = cur.fetchone()[0]
+                self.db.conn.commit()  # ← ВАЖНО!
+                print(f"   ✅ Вставлено, id={inserted_id}")
+                return inserted_id
+        except Exception as e:
+            print(f"   ❌ Ошибка: {e}")
+            self.db.conn.rollback()
+            return None
 
 class ModuleRepository:
     """Работа с таблицей модулей"""
@@ -138,13 +144,16 @@ class ModuleRepository:
     
     def save_module(self, name: str, path: str = None, hash_value: str = None) -> int:
         """Сохраняет модуль и возвращает его ID"""
+        # Сначала проверяем, есть ли уже такой модуль
+        existing = self.get_module_id(name)
+        if existing:
+            print(f"📁 Модуль уже существует: {name} (id={existing})")
+            return existing
+    
+        # Если нет — вставляем
         query = """
             INSERT INTO module (name, path, hash)
             VALUES (%s, %s, %s)
-            ON CONFLICT (name) DO UPDATE SET
-                path = EXCLUDED.path,
-                hash = EXCLUDED.hash,
-                last_modified = CURRENT_TIMESTAMP
             RETURNING id
         """
         params = (name, path, hash_value)

@@ -1,7 +1,7 @@
 from .antlr.BSLVisitor import BSLVisitor
 from .antlr.BSLParser import BSLParser
 from antlr4.tree.Tree import TerminalNode
-from src.parser.ast_nodes import AssignmentNode
+from src.parser.ast_nodes import AssignmentNode, Position, Range
 from src.parser.ast_nodes import (
     ModuleNode,
     FunctionNode,
@@ -33,12 +33,12 @@ class AntlrToAST(BSLVisitor):
         try:
             name = ctx.ID().getText()
             print(f"🔍 Найдена переменная: {name}")
-
+            node_range = self._get_id_range(ctx)
             is_export = (
                 ctx.getChildCount() > 2 and ctx.getChild(2).getText() == "Экспорт"
             )
 
-            var_node = VariableNode(name, is_export)
+            var_node = VariableNode(name, is_export, node_range)
             return var_node
 
         except Exception as e:
@@ -53,6 +53,7 @@ class AntlrToAST(BSLVisitor):
         try:
             # Получаем имя переменной (первый ID)
             name = None
+            id_token = None
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
                 if (
@@ -60,12 +61,16 @@ class AntlrToAST(BSLVisitor):
                     and child.symbol.type == BSLParser.ID
                 ):
                     name = child.getText()
+                    id_token = child
                     break
 
             if name is None:
                 return None
+            
 
-            var_node = VariableNode(name, False)
+            node_range = self._get_id_range(id_token) 
+    
+            var_node = VariableNode(name, False, node_range)
             
             return var_node
 
@@ -73,6 +78,27 @@ class AntlrToAST(BSLVisitor):
             self.errors.append(f"Ошибка в объявлении локальной переменной: {e}")
             print(f"❌ Ошибка в локальной переменной: {e}")
             return None
+        
+    def _get_id_range(self, id_node) -> Range:
+        """Получает range для ID токена"""
+        if id_node is None:
+            return None
+    
+        # Если передан контекст с методом ID()
+        if hasattr(id_node, 'ID'):
+            id_token = id_node.ID().symbol
+            name = id_node.ID().getText()
+        # Если передан сам TerminalNode
+        elif isinstance(id_node, TerminalNode) and id_node.symbol.type == BSLParser.ID:
+            id_token = id_node.symbol
+            name = id_node.getText()
+        else:
+            return None
+    
+        return Range(
+            start=Position(line=id_token.line, column=id_token.column + 1),
+            end=Position(line=id_token.line, column=id_token.column + len(name) + 1)
+        )
 
     def _process_statement(self, stmt_ctx, container):
         # Перебираем все дочерние элементы statement'а
@@ -133,8 +159,8 @@ class AntlrToAST(BSLVisitor):
     def visitProcedure(self, ctx):
         try:
             name = ctx.ID().getText()
-            proc = ProcedureNode(name)
-
+            node_range = self._get_id_range(ctx)
+            proc = ProcedureNode(name,node_range)
             self.current_procedure = proc
             self.current_scope.append(f"procedure:{name}")
             # Парсим параметры
@@ -196,7 +222,16 @@ class AntlrToAST(BSLVisitor):
         Обрабатывает использование переменной и собирает информацию о ней
         """
         try:
-            var_name = ctx.getText()
+               # Получаем range только для ID
+            node_range = self._get_id_range(ctx)
+            if node_range is None:
+                # Fallback: пробуем получить имя другим способом
+                var_name = ctx.getText()
+                node_range = self._get_range(ctx)
+            else:
+                var_name = ctx.ID().getText() if hasattr(ctx, 'ID') else ctx.getText()
+        
+            print(f"DEBUG: переменная {var_name} at line={node_range.start.line}, col={node_range.start.column}")
             # Определяем контекст
             current_context = None
             if self.current_function:
@@ -242,7 +277,7 @@ class AntlrToAST(BSLVisitor):
 
                     if not exists:
                         # Добавляем как локальную переменную
-                        var_node = VariableNode(var_name, False)
+                        var_node = VariableNode(var_name, False, node_range)
                         current_context.local_vars.append(var_node)
                         indent = (
                             "         "
@@ -254,18 +289,40 @@ class AntlrToAST(BSLVisitor):
                                 indent} Найдена локальная переменная: {var_name} (в {scope})"
                         )
 
-            # ВСЕГДА возвращаем узел переменной!
-            return VariableNode(var_name, False)
+            return VariableNode(var_name, False,node_range)
 
         except Exception as e:
             self.errors.append(f"Ошибка при обработке переменной: {e}")
             return None
-
+        
+    def _get_range(self, ctx) -> Range:
+        """Безопасное получение диапазона из контекста ANTLR"""
+        if ctx is None:
+            print("DEBUG _get_range: ctx is None")
+            return None
+    
+        if hasattr(ctx, 'start') and hasattr(ctx, 'stop'):
+            if ctx.start is not None and ctx.stop is not None:
+                start_column = ctx.start.column +1
+                end_column = ctx.stop.column + 1
+                print(f"DEBUG _get_range: start.line={ctx.start.line}, stop.line={ctx.stop.line}")
+                return Range(
+                    start=Position(line=ctx.start.line, column=start_column),
+                    end=Position(line=ctx.stop.line, column=end_column)
+                )
+            else:
+                print(f"DEBUG _get_range: start или stop = None для {type(ctx).__name__}")
+                return None
+    
+        print(f"DEBUG _get_range: нет start/stop для {type(ctx).__name__}")
+        return None
+    
     def visitFunction(self, ctx):
         try:
             name = ctx.ID().getText()
             print(f"🔍 Найдена функция: {name}")
-            func = FunctionNode(name)
+            node_range = self._get_range(ctx)
+            func = FunctionNode(name, node_range)
 
             self.current_function = func
             self.current_scope.append(f"function:{name}")
@@ -326,6 +383,7 @@ class AntlrToAST(BSLVisitor):
         try:
             # Получаем имя параметра (первый ID)
             name = None
+            id_token = None
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
                 if (
@@ -333,7 +391,11 @@ class AntlrToAST(BSLVisitor):
                     and child.symbol.type == BSLParser.ID
                 ):
                     name = child.getText()
+                    id_token = child
                     break
+
+            # Получаем range для параметра
+            node_range = self._get_id_range(id_token)
 
             # Проверяем, есть ли ключевое слово Знач
             by_value = False
@@ -350,14 +412,15 @@ class AntlrToAST(BSLVisitor):
                 f"      → Параметр: {name}, Знач: {by_value}, умолчание: {has_default}"
             )
 
-            return ParameterNode(name, by_value, has_default)
+            return ParameterNode(name, by_value, has_default, node_range)
         except Exception as e:
             self.errors.append(f"Ошибка в параметре: {e}")
             return None
 
     def visitReturnStatement(self, ctx):
         try:
-            stmt = ReturnStatementNode()
+            node_range = self._get_range(ctx)
+            stmt = ReturnStatementNode(node_range)
             if ctx.expression():
                 stmt.expression = self.visit(ctx.expression())
             return stmt
@@ -397,16 +460,17 @@ class AntlrToAST(BSLVisitor):
 
     def visitLiteral(self, ctx):
         try:
+            node_range = self._get_range(ctx)
             if ctx.STRING():
-                return LiteralNode(ctx.getText(), "string")
+                return LiteralNode(ctx.getText(), "string", node_range)
             elif ctx.NUMBER():
-                return LiteralNode(ctx.getText(), "number")
+                return LiteralNode(ctx.getText(), "number", node_range)
             elif ctx.getText() == "Истина":
-                return LiteralNode(True, "boolean")
+                return LiteralNode(True, "boolean", node_range)
             elif ctx.getText() == "Ложь":
-                return LiteralNode(False, "boolean")
+                return LiteralNode(False, "boolean", node_range)
             else:
-                return LiteralNode(ctx.getText(), "unknown")
+                return LiteralNode(ctx.getText(), "unknown", node_range)
         except Exception as e:
             self.errors.append(f"Ошибка в литерале: {e}")
             print(f"❌ Ошибка в литерале: {e}")
@@ -419,8 +483,9 @@ class AntlrToAST(BSLVisitor):
 
         try:
             print("🔍 Найден цикл Для")
+            node_range = self._get_range(ctx)
             # Создаём узел цикла
-            for_node = ForLoopNode()
+            for_node = ForLoopNode(node_range)
 
             # Получаем переменную-счётчик (первый ID после FOR)
             counter_var = None
@@ -476,9 +541,9 @@ class AntlrToAST(BSLVisitor):
         """
         try:
             print("🔍 Найден цикл Пока")
-
+            node_range = self._get_range(ctx)
             # Создаём узел цикла
-            while_node = WhileLoopNode()
+            while_node = WhileLoopNode(node_range)
 
             # Получаем условие цикла
             if ctx.expression():
@@ -633,6 +698,7 @@ class AntlrToAST(BSLVisitor):
         """Обрабатывает оператор присваивания
         (только для регистрации переменных)"""
         try:
+            node_range = self._get_range(ctx)
             left_node = None
             right_node = None
             # Находим переменную слева от '='
@@ -648,7 +714,8 @@ class AntlrToAST(BSLVisitor):
 
                     # Регистрируем переменную через visitVariable
                     # Это добавит её в local_vars, если она ещё не там
-                    left_node = self.visitVariable(child)
+                    var_range = self._get_id_range(child)
+                    left_node = VariableNode(var_name, False, var_range)
                     print(f"      📝 Присваивание переменной: {var_name}")
                     break
 
@@ -661,7 +728,7 @@ class AntlrToAST(BSLVisitor):
                     break
 
             if left_node and right_node:
-                assign_node = AssignmentNode(left_node, right_node)
+                assign_node = AssignmentNode(left_node, right_node, node_range)
 
                 if self.current_procedure:
                     self.current_procedure.body.append(assign_node)

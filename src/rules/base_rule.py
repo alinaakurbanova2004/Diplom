@@ -6,6 +6,7 @@ from src.rules.violation import Violation
 
 class BaseRule:
     def __init__(self):
+        self.id = None
         self.code = ""  # Код правила (например, "STD-01-01")
         self.name = ""  # Название правила
         self.description = ""  # Описание

@@ -15,8 +15,9 @@ project_root = current_dir.parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.parser.antlr_parser import AntlrBSLParser
-from src.database.db_manager import DatabaseConnection
+from src.database.db_manager import DatabaseConnection, ModuleRepository, ViolationRepository
 from src.rules.loader import RuleLoader
+from src.rules.rule_registry import RuleRegistry
 from src.rules.base_rule import Violation
 from src.visitor.rules.rule_checking_visitor import RuleCheckingVisitor
 from src.visitor.collectors import VariableCollector, FunctionCollector
@@ -46,15 +47,16 @@ DB_CONFIG = {
 db = DatabaseConnection(**DB_CONFIG)
 db_connected = db.connect()
 
+reports_storage: Dict[str, Dict[str, Any]] = {}
+
 rules = []
 if db_connected:
     rule_loader = RuleLoader(db)
     rules = rule_loader.load_all_rules()
+    RuleRegistry.register_many(rules)
     print(f"Loaded {len(rules)} rules from database")
 else:
     print("Database not available")
-
-reports_storage: Dict[str, Dict[str, Any]] = {}
 
 def json_unicode(data, status=200):
     response = make_response(json.dumps(data, ensure_ascii=False, indent=2), status)
@@ -110,14 +112,31 @@ def analyze_code():
         if ast is None:
             return json_unicode({"error": "Parse error"}, 400)
 
+        module_id = None
+        if db_connected:
+            module_repo = ModuleRepository(db)
+            module_id = module_repo.save_module(module_name)
+            print(f"Module saved: {module_name} (id={module_id})")
+
         statistics = collect_statistics(ast)
 
+        violations = []
         if rules:
             rule_checker = RuleCheckingVisitor(rules)
             ast.accept(rule_checker)
             violations = rule_checker.violations
-        else:
-            violations = []
+
+        if db_connected and violations:
+            violation_repo = ViolationRepository(db)
+            saved_count = 0
+            for v in violations:
+                rule = RuleRegistry.get_rule(v.rule_code)
+                if rule:
+                    violation_repo.save_violation(v, rule.id, module_id)
+                    saved_count += 1
+                else:
+                    print(f"Rule {v.rule_code} not found in registry")
+            print(f"Saved {saved_count}/{len(violations)} violations to DB")
 
         result = {
             "success": True,

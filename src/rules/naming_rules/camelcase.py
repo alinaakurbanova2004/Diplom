@@ -23,21 +23,58 @@ class CamelCase(BaseRule):
     def check(self, module: ModuleNode) -> List[Violation]:
         violations = []
 
+        # 1. Глобальные переменные
         for var in module.variables:
             if not self._is_correct_camelcase(var.name):
+                line = var.range.start.line if var.range else 0
+                col = var.range.start.column if var.range else 0
                 violations.append(
                     Violation(
                         rule_code=self.code,
                         rule_name=self.name,
                         severity=self.severity,
                         module_name=module.name,
-                        line=var.range.start.line if var.range else 0,
-                        column=var.range.start.column if var.range else 0,
-                        message=f"Переменная '{var.name}'"
-                        f"должна быть в CamelCase:"
-                        f"слова слитно, каждое с большой буквы",
+                        line=line,
+                        column=col,
+                        message=f"Переменная '{var.name}' должна быть в CamelCase: слова слитно, каждое с большой буквы",
                     )
                 )
+
+        # 2. Локальные переменные в процедурах
+        for proc in module.procedures:
+            for var in proc.local_vars:
+                if not self._is_correct_camelcase(var.name):
+                    line = var.range.start.line if var.range else 0
+                    col = var.range.start.column if var.range else 0
+                    violations.append(
+                        Violation(
+                            rule_code=self.code,
+                            rule_name=self.name,
+                            severity=self.severity,
+                            module_name=module.name,
+                            line=line,
+                            column=col,
+                            message=f"Переменная '{var.name}' в процедуре '{proc.name}' должна быть в CamelCase: слова слитно, каждое с большой буквы",
+                        )
+                    )
+
+        # 3. Локальные переменные в функциях
+        for func in module.functions:
+            for var in func.local_vars:
+                if not self._is_correct_camelcase(var.name):
+                    line = var.range.start.line if var.range else 0
+                    col = var.range.start.column if var.range else 0
+                    violations.append(
+                        Violation(
+                            rule_code=self.code,
+                            rule_name=self.name,
+                            severity=self.severity,
+                            module_name=module.name,
+                            line=line,
+                            column=col,
+                            message=f"Переменная '{var.name}' в функции '{func.name}' должна быть в CamelCase: слова слитно, каждое с большой буквы",
+                        )
+                    )
 
         return violations
 

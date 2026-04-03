@@ -86,5 +86,5 @@ class TooManyParameters(BaseRule):
             module_name=module.name,
             line=node.range.start.line if node.range else 0,
             column=node.range.start.column if node.range else 0,
-            message=message,
+            message=message
         )
