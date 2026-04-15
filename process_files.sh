@@ -1,76 +1,73 @@
 #!/bin/bash
 
-# Настройки
+# ============================================
+# ТРИ ПАПКИ
+# ============================================
 SOURCE_DIR="/home/alina/1c_files/for_analysis"
-DEST_DIR="/home/alina/1c_files/processed"
+PROCESSED_DIR="/home/alina/1c_files/processed"
+RESULT_DIR="/home/alina/1c_files/result"
 LOG_FILE="/home/alina/logs/file_processor.log"
-APP_PATH="/home/alina/Загрузки/Diplom-main/Diplom"
 
-# Создаем папки, если их нет
-mkdir -p "$SOURCE_DIR" "$DEST_DIR" "$(dirname "$LOG_FILE")"
+# Создаем папки
+mkdir -p "$SOURCE_DIR" "$PROCESSED_DIR" "$RESULT_DIR" "$(dirname "$LOG_FILE")"
 
-# Функция для обработки файла
+# Функция обработки файла
 process_file() {
     local filepath="$1"
     local filename=$(basename "$filepath")
     local timestamp=$(date +"%Y%m%d_%H%M%S")
-    local temp_file="${filename%.*}_temp.${filename##*.}"
+    local base_name="${filename%.*}"
     
-    echo "$(date): [НАЧАЛО] Обработка файла: $filename" >> "$LOG_FILE"
+    echo "$(date): [1] Обнаружен файл: $filename" >> "$LOG_FILE"
     echo "📄 Найден файл: $filename"
     
+    # ============================================
+    # ГЛАВНОЕ: ЗАПУСК АНАЛИЗАТОРА
+    # ============================================
+    echo "$(date): [2] Запуск анализатора для: $filename" >> "$LOG_FILE"
     echo "🔍 Запуск анализатора для: $filename"
     
-     curl -X POST http://localhost:5000/api/analyze/file \
-       -F "file=@$filepath" >> "$LOG_FILE" 2>&1
+    cd /home/alina/Загрузки/Diplom-main/Diplom
+    python3 main.py "$filepath" "$RESULT_DIR" >> "$LOG_FILE" 2>&1
     
     ANALYZER_EXIT=$?
+    echo "$(date): [3] Анализатор завершил с кодом: $ANALYZER_EXIT" >> "$LOG_FILE"
     
     if [ $ANALYZER_EXIT -eq 0 ]; then
-        echo "✅ Анализатор завершил работу успешно" >> "$LOG_FILE"
+        echo "$(date): [4] Анализ успешен" >> "$LOG_FILE"
         echo "✅ Анализ завершен для: $filename"
+        
+        # Перемещаем исходный файл в processed
+        mv "$filepath" "$PROCESSED_DIR/${timestamp}_${filename}"
+        echo "$(date): [5] Файл перемещен в processed: ${timestamp}_${filename}" >> "$LOG_FILE"
+        echo "📦 Файл перемещен в processed"
     else
-        echo "❌ Ошибка анализатора (код: $ANALYZER_EXIT)" >> "$LOG_FILE"
-        echo "❌ Ошибка при анализе: $filename"
-    fi
-    
-    # Перемещаем файл в processed с префиксом даты
-    local dest_path="$DEST_DIR/${timestamp}_${filename}"
-    
-    if mv "$filepath" "$dest_path"; then
-        echo "$(date): [ГОТОВО] Файл перемещен: $filename -> ${timestamp}_${filename}" >> "$LOG_FILE"
-        echo "📦 Файл перемещен в processed: ${timestamp}_${filename}"
-    else
-        echo "$(date): [ОШИБКА] Не удалось переместить $filename" >> "$LOG_FILE"
-        echo "❌ Ошибка перемещения: $filename"
+        echo "$(date): [ОШИБКА] Анализ не удался для: $filename" >> "$LOG_FILE"
+        echo "❌ Ошибка анализа для: $filename"
     fi
     
     echo "----------------------------------------" >> "$LOG_FILE"
 }
 
-# Экспорт функции для использования в подпроцессах
 export -f process_file
-export SOURCE_DIR DEST_DIR LOG_FILE APP_PATH
 
-echo "$(date): ========== СКРИПТ ЗАПУЩЕН ==========" >> "$LOG_FILE"
-echo "$(date): Мониторинг папки: $SOURCE_DIR" >> "$LOG_FILE"
+echo "$(date): ========== ЗАПУСК МОНИТОРИНГА ==========" >> "$LOG_FILE"
+echo "📁 Входная папка: $SOURCE_DIR"
+echo "📁 Обработанные: $PROCESSED_DIR"
+echo "📁 Результаты: $RESULT_DIR"
 
-# Обработка уже существующих файлов при запуске
-for existing_file in "$SOURCE_DIR"/*; do
+# Обработка существующих файлов
+for existing_file in "$SOURCE_DIR"/*.bsl; do
     if [ -f "$existing_file" ]; then
-        echo "📁 Найден существующий файл: $(basename "$existing_file")"
         process_file "$existing_file"
     fi
 done
 
-# Основной цикл мониторинга
+# Мониторинг новых файлов
 inotifywait -m "$SOURCE_DIR" -e create -e moved_to --format '%w%f' |
 while read filepath; do
-    # Небольшая задержка, чтобы убедиться, что файл полностью скопирован
     sleep 1
-    
-    # Проверяем, что файл существует и это не временный файл
-    if [ -f "$filepath" ] && [[ ! "$filepath" =~ \.tmp$ ]] && [[ ! "$filepath" =~ \~$ ]]; then
+    if [ -f "$filepath" ] && [[ "$filepath" == *.bsl ]]; then
         process_file "$filepath"
     fi
 done

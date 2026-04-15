@@ -32,7 +32,7 @@ class AntlrBSLParser:
         lexer = BSLLexer(input_stream)
         stream = CommonTokenStream(lexer)
         parser = BSLParser(stream)
-
+        
         # Добавляем listener для ошибок
         error_listener = CustomErrorListener()
         parser.removeErrorListeners()
@@ -81,6 +81,7 @@ class AntlrBSLParser:
             return None
 
         module.name = module_name
+        module.source_file = module_name
         print(f"✅ Модуль успешно создан: {module.name}")
         return module
 

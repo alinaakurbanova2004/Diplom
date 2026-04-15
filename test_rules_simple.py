@@ -122,7 +122,7 @@ test_cases = [
     КонецЦикла;
 КонецПроцедуры
 """,
-        "expected_rules": ["VAR-01", "VAR-04", "FUN-01"],
+        "expected_rules": ["VAR-01", "VAR-04", "FUN-01", "FUN-05"],
     },
 ]
 

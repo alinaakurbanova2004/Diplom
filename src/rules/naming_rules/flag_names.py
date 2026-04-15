@@ -1,5 +1,5 @@
 from typing import List
-from src.parser.ast_nodes import ModuleNode
+from src.parser.ast_nodes import ModuleNode, AssignmentNode, IfStatementNode, WhileLoopNode
 from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
@@ -27,7 +27,7 @@ class FlagVariableNames(BaseRule):
             "Признак", "Флаг", "Состояние"
         ]
 
-        # Плохие имена для флагов
+        # Плохие имена для флагов (только если переменная ТОЧНО флаг)
         self.bad_flag_names = [
             "флаг", "признак", "состояние", "режим", "тип",
             "value", "flag", "status", "mode", "type"
@@ -36,29 +36,14 @@ class FlagVariableNames(BaseRule):
     def check(self, module: ModuleNode) -> List[Violation]:
         violations = []
 
-        # 1. Глобальные переменные
-        for var in module.variables:
-            if self._looks_like_flag(var.name) and not self._is_good_flag_name(var.name):
-                line = var.range.start.line if var.range else 0
-                col = var.range.start.column if var.range else 0
-                violations.append(
-                    Violation(
-                        rule_code=self.code,
-                        rule_name=self.name,
-                        severity=self.severity,
-                        module_name=module.name,
-                        line=line,
-                        column=col,
-                        message=f"Переменная-флаг '{var.name}' должна называться по истинному значению (например: ЕстьОшибки, ЭтоТоварТара)",
-                    )
-                )
-
-        # 2. Локальные переменные в процедурах
-        for proc in module.procedures:
-            for var in proc.local_vars:
-                if self._looks_like_flag(var.name) and not self._is_good_flag_name(var.name):
+        # Проверяем переменные в модуле, процедурах и функциях
+        for var, context_name, context_type in self._iter_variables(module):
+            if self._is_used_as_boolean(var, module):
+                if not self._is_good_flag_name(var.name):
                     line = var.range.start.line if var.range else 0
                     col = var.range.start.column if var.range else 0
+                    
+                    context_info = f"в {context_type} '{context_name}'" if context_name else ""
                     violations.append(
                         Violation(
                             rule_code=self.code,
@@ -67,36 +52,114 @@ class FlagVariableNames(BaseRule):
                             module_name=module.name,
                             line=line,
                             column=col,
-                            message=f"Переменная-флаг '{var.name}' в процедуре '{proc.name}' должна называться по истинному значению (например: ЕстьОшибки, ЭтоТоварТара)",
-                        )
-                    )
-
-        # 3. Локальные переменные в функциях
-        for func in module.functions:
-            for var in func.local_vars:
-                if self._looks_like_flag(var.name) and not self._is_good_flag_name(var.name):
-                    line = var.range.start.line if var.range else 0
-                    col = var.range.start.column if var.range else 0
-                    violations.append(
-                        Violation(
-                            rule_code=self.code,
-                            rule_name=self.name,
-                            severity=self.severity,
-                            module_name=module.name,
-                            line=line,
-                            column=col,
-                            message=f"Переменная-флаг '{var.name}' в функции '{func.name}' должна называться по истинному значению (например: ЕстьОшибки, ЭтоТоварТара)",
+                            message=f"Переменная-флаг '{var.name}' {context_info} должна называться по истинному значению (например: ЕстьОшибки, ЭтоТоварТара)",
                         )
                     )
 
         return violations
 
-    def _looks_like_flag(self, name: str) -> bool:
-        """Определяет, похоже ли имя на флаг"""
-        name_lower = name.lower()
-        for bad in self.bad_flag_names:
-            if bad in name_lower:
+    def _iter_variables(self, module):
+        """Итерирует по всем переменным в модуле"""
+        # Глобальные переменные
+        for var in module.variables:
+            yield var, None, None
+        
+        # Переменные в процедурах
+        for proc in module.procedures:
+            for var in proc.local_vars:
+                yield var, proc.name, "процедуре"
+        
+        # Переменные в функциях
+        for func in module.functions:
+            for var in func.local_vars:
+                yield var, func.name, "функции"
+
+    def _is_used_as_boolean(self, var, module) -> bool:
+        """
+        🔥 КЛЮЧЕВОЙ МЕТОД: проверяет, используется ли переменная как булева (флаг)
+        """
+        var_name = var.name
+        
+        # Проверяем все процедуры и функции
+        for proc in module.procedures:
+            if self._check_boolean_usage_in_body(var_name, proc.body):
                 return True
+        
+        for func in module.functions:
+            if self._check_boolean_usage_in_body(var_name, func.body):
+                return True
+        
+        # Проверяем тело модуля (глобальный код)
+        if hasattr(module, 'body'):
+            if self._check_boolean_usage_in_body(var_name, module.body):
+                return True
+        
+        return False
+
+    def _check_boolean_usage_in_body(self, var_name: str, body: List) -> bool:
+        """Проверяет, используется ли переменная как булева в теле"""
+        for node in body:
+            # 1. Проверка присваивания Истина/Ложь
+            if isinstance(node, AssignmentNode):
+                if self._is_assigned_boolean(var_name, node):
+                    return True
+            
+            # 2. Проверка использования в условии (Если, ИначеЕсли, Пока)
+            if self._is_in_condition(var_name, node):
+                return True
+            
+            # 3. Рекурсивный обход вложенных конструкций
+            if hasattr(node, 'body') and isinstance(node.body, list):
+                if self._check_boolean_usage_in_body(var_name, node.body):
+                    return True
+            
+            if hasattr(node, 'then_branch') and isinstance(node.then_branch, list):
+                if self._check_boolean_usage_in_body(var_name, node.then_branch):
+                    return True
+            
+            if hasattr(node, 'else_branch') and isinstance(node.else_branch, list):
+                if self._check_boolean_usage_in_body(var_name, node.else_branch):
+                    return True
+        
+        return False
+
+    def _is_assigned_boolean(self, var_name: str, node: AssignmentNode) -> bool:
+        """Проверяет, присваивается ли переменной булево значение (Истина/Ложь)"""
+        if hasattr(node.left, 'name') and node.left.name == var_name:
+            # Проверяем правую часть
+            if hasattr(node.right, 'literal_type') and node.right.literal_type == 'boolean':
+                return True
+            # Если справа переменная, которая может быть булевой - не проверяем
+        return False
+
+    def _is_in_condition(self, var_name: str, node) -> bool:
+        """Проверяет, используется ли переменная в условии"""
+        # Проверка условия в IfStatementNode
+        if isinstance(node, IfStatementNode) and hasattr(node, 'condition'):
+            if self._var_in_expression(var_name, node.condition):
+                return True
+        
+        # Проверка условия в WhileLoopNode
+        if isinstance(node, WhileLoopNode) and hasattr(node, 'condition'):
+            if self._var_in_expression(var_name, node.condition):
+                return True
+        
+        return False
+
+    def _var_in_expression(self, var_name: str, expr) -> bool:
+        """Проверяет, присутствует ли переменная в выражении"""
+        if expr is None:
+            return False
+        
+        # Если это переменная
+        if hasattr(expr, 'name') and expr.name == var_name:
+            return True
+        
+        # Если это бинарная операция
+        if hasattr(expr, 'left') and hasattr(expr, 'right'):
+            return (self._var_in_expression(var_name, expr.left) or 
+                    self._var_in_expression(var_name, expr.right))
+        
         return False
 
     def _is_good_flag_name(self, name: str) -> bool:

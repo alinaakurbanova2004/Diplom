@@ -695,41 +695,33 @@ class AntlrToAST(BSLVisitor):
                 self.visitVariable(child)
 
     def visitAssignment(self, ctx):
-        """Обрабатывает оператор присваивания
-        (только для регистрации переменных)"""
+        """Обрабатывает оператор присваивания"""
         try:
             node_range = self._get_range(ctx)
             left_node = None
             right_node = None
+        
             # Находим переменную слева от '='
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
-
-                # Если это ID, значит нашли переменную
-                if (
-                    isinstance(child, TerminalNode)
-                    and child.symbol.type == BSLParser.ID
-                ):
+            
+                if (isinstance(child, TerminalNode) and child.symbol.type == BSLParser.ID):
                     var_name = child.getText()
-
-                    # Регистрируем переменную через visitVariable
-                    # Это добавит её в local_vars, если она ещё не там
-                    var_range = self._get_id_range(child)
-                    left_node = VariableNode(var_name, False, var_range)
+                    # Регистрируем переменную (это добавит её в local_vars)
+                    left_node = self.visitVariable(child)
                     print(f"      📝 Присваивание переменной: {var_name}")
                     break
-
-            # Обрабатываем правую часть (выражение) -
-            # там могут быть другие переменные
+        
+            # Обрабатываем правую часть
             for i in range(ctx.getChildCount()):
                 child = ctx.getChild(i)
                 if isinstance(child, BSLParser.ExpressionContext):
                     right_node = self.visit(child)
                     break
-
+        
             if left_node and right_node:
                 assign_node = AssignmentNode(left_node, right_node, node_range)
-
+            
                 if self.current_procedure:
                     self.current_procedure.body.append(assign_node)
                     print(" Добавлен узел присваивания в процедуру")
@@ -737,9 +729,9 @@ class AntlrToAST(BSLVisitor):
                     self.current_function.body.append(assign_node)
                     print("Добавлен узел присваивания в функцию")
                 return assign_node
-
+        
             return None
-
+    
         except Exception as e:
             self.errors.append(f"Ошибка в присваивании: {e}")
             return None
