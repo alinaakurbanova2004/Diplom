@@ -4,7 +4,7 @@ from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
 
-class CamelCaseRule(BaseRule):
+class CamelCase(BaseRule):
     """
     Правило VAR-02: Составные имена переменных должны быть в CamelCase
     Слова слитно, каждое слово начинается с большой буквы

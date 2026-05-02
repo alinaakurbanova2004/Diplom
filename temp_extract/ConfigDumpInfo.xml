@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ConfigDumpInfo xmlns="http://v8.1c.ru/8.3/xcf/dumpinfo" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" format="Hierarchical" version="2.19">
+	<ConfigVersions>
+		<Metadata name="Catalog.Клиенты" id="2a0366cf-b28e-4edd-b7c8-427eb7e45a86" configVersion="729fb23be6ce97448b734272c17c8b5400000000"/>
+		<Metadata name="Catalog.Клиенты.Form.ФормаЭлемента" id="5e50027f-a0eb-4ffa-916c-c6f03384ca39" configVersion="0c6a38f28b970a40b89fe371dae4bf9400000000"/>
+		<Metadata name="Catalog.Клиенты.Form.ФормаЭлемента.Form" id="5e50027f-a0eb-4ffa-916c-c6f03384ca39.0" configVersion="568696d026a8b64796bdc6b13a8a7ee200000000"/>
+		<Metadata name="Configuration.Конфигурация" id="f35ec660-ef16-48f2-8095-2be03530aed3" configVersion="7685f0c1ae3fdc49822f8378766e858e00000000"/>
+		<Metadata name="DataProcessor.Анализатор1С" id="941276ec-efe1-48f4-babf-1e05b7f03417" configVersion="0644b8e5dc5fa6428ab8be7a5e845d7300000000"/>
+		<Metadata name="DataProcessor.Анализатор1С.Form.Форма" id="8cc931e7-47e2-4a65-a47b-910fc7d14533" configVersion="81a4603933e8694085213f628a41681100000000"/>
+		<Metadata name="DataProcessor.Анализатор1С.Form.Форма.Form" id="8cc931e7-47e2-4a65-a47b-910fc7d14533.0" configVersion="62a90e6d221de14ebdf38ce9e957d97400000000"/>
+		<Metadata name="Language.Русский" id="7ed17e69-7c26-429c-bda3-d1dd1a4f79c5" configVersion="21f5d41f8170f34dacaa94bd2c6a8bab00000000"/>
+	</ConfigVersions>
+</ConfigDumpInfo>
