@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ConfigDumpInfo xmlns="http://v8.1c.ru/8.3/xcf/dumpinfo" xmlns:xen="http://v8.1c.ru/8.3/xcf/enums" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" format="Hierarchical" version="2.20">
+	<ConfigVersions>
+		<Metadata name="Catalog.Клиенты" id="2a015a4f-0199-41d0-a2e3-6983bab6a011" configVersion="76b3d85ade4ea944816034b50116267d00000000">
+			<Metadata name="Catalog.Клиенты.Attribute.Пример" id="42f657bf-2103-49a1-aad6-aee54a6d1e13"/>
+		</Metadata>
+		<Metadata name="Catalog.Клиенты.Form.ФормаЭлемента" id="882d2f7e-e81d-4682-a13a-d4bfd32af501" configVersion="7f70c61abda1524c8b4bcbcf6187276700000000"/>
+		<Metadata name="Catalog.Клиенты.Form.ФормаЭлемента.Form" id="882d2f7e-e81d-4682-a13a-d4bfd32af501.0" configVersion="4a8ac84d34a27540aa98151d2c663af000000000"/>
+		<Metadata name="Catalog.Клиенты.ObjectModule" id="2a015a4f-0199-41d0-a2e3-6983bab6a011.0" configVersion="6656b3b41e3aba48b71064f21e34e8ad00000000"/>
+		<Metadata name="Configuration.Конфигурация" id="872ee6cf-138d-4dc7-b1cd-936a31465bec" configVersion="9b51be6640e8994ba9ee98a6bccddd3600000000"/>
+		<Metadata name="DataProcessor.Анализатор" id="16f9be69-18cc-4799-bed9-02b466897a07" configVersion="9e414d359be65b4d9b4329641831bb6100000000"/>
+		<Metadata name="DataProcessor.Анализатор.Form.Форма" id="59bb7ed2-af5f-488a-8525-b455d0f455a3" configVersion="87b0535becdd95439da51f227b2c2cc500000000"/>
+		<Metadata name="DataProcessor.Анализатор.Form.Форма.Form" id="59bb7ed2-af5f-488a-8525-b455d0f455a3.0" configVersion="9e62ae1ab4abf643ba0e3232c2fe2ad200000000"/>
+		<Metadata name="Document.Согласие" id="f82c5edf-6d37-4e33-befd-935e1aac5562" configVersion="e387c59aee408949b9ed8a0b1724d7a300000000"/>
+		<Metadata name="Document.Согласие.Form.ФормаДокумента" id="149f436b-2859-46f0-8b5c-f5980a3d3c34" configVersion="d124b534ed48b9489cb32a65751e783a00000000"/>
+		<Metadata name="Document.Согласие.Form.ФормаДокумента.Form" id="149f436b-2859-46f0-8b5c-f5980a3d3c34.0" configVersion="6d320a4aae912c4a868230b59954dd7800000000"/>
+		<Metadata name="Language.Русский" id="70ff8341-0b37-43c0-99f1-7cf81ac74358" configVersion="766c5b3c98e7a64387f7fa5aa5e1471800000000"/>
+		<Metadata name="Report.ОтчётЗаКвартал" id="f4695bd6-e275-4d2d-9d73-b365ac930b29" configVersion="589d7c4383bd5e49b79f0a8c0adb8b6e00000000"/>
+		<Metadata name="Report.ОтчётЗаКвартал.Form.ФормаОтчета" id="06ee0026-5a62-4ae1-9522-8c9fb423ab99" configVersion="564148b18657044e9c4aee382395c16a00000000"/>
+		<Metadata name="Report.ОтчётЗаКвартал.Form.ФормаОтчета.Form" id="06ee0026-5a62-4ae1-9522-8c9fb423ab99.0" configVersion="9caccf5331344f4bb0a62fec66b982c500000000"/>
+	</ConfigVersions>
+</ConfigDumpInfo>

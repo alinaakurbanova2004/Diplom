@@ -1,6 +1,6 @@
-# Generated from C:/Diplom/Diplom/src/parser/BSL.g4 by ANTLR 4.13.2
+# Generated from ../parser/BSL.g4 by ANTLR 4.9.2
 from antlr4 import *
-if "." in __name__:
+if __name__ is not None and "." in __name__:
     from .BSLParser import BSLParser
 else:
     from BSLParser import BSLParser
@@ -9,8 +9,13 @@ else:
 
 class BSLVisitor(ParseTreeVisitor):
 
-    # Visit a parse tree produced by BSLParser#file.
-    def visitFile(self, ctx:BSLParser.FileContext):
+    # Visit a parse tree produced by BSLParser#bslFile.
+    def visitBslFile(self, ctx:BSLParser.BslFileContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by BSLParser#directive.
+    def visitDirective(self, ctx:BSLParser.DirectiveContext):
         return self.visitChildren(ctx)
 
 

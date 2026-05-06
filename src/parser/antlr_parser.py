@@ -39,7 +39,7 @@ class AntlrBSLParser:
         parser.addErrorListener(error_listener)
 
         # Получаем корневое правило
-        tree = parser.file_()
+        tree = parser.bslFile()
         print("Дерево разбора получено")
         print(f"Тип дерева: {type(tree).__name__}")
         print(f"Количество детей: {tree.getChildCount()}")

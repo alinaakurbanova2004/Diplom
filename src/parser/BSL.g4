@@ -27,6 +27,10 @@ UNDEFINED: 'Undefined' ;                                  // Неопредел�
 AND: '\u0418' ;                                           // И
 OR: '\u0418\u041B\u0418' ;                                // ИЛИ
 NOT: '\u041D\u0415' ;                                     // НЕ
+// ДОБАВЛЯЕМ ТОКЕНЫ ДЛЯ ДИРЕКТИВ
+DIRECTIVE_CLIENT: '&НаКлиенте' ;
+DIRECTIVE_SERVER: '&НаСервере' ;
+DIRECTIVE_CLIENT_SERVER: '&НаКлиентеНаСервере' ;
 
 // Операторы
 PLUS: '+' ;
@@ -53,13 +57,15 @@ WS: [ \t\r\n]+ -> skip ;
 COMMENT: '//' ~[\r\n]* -> skip ;
 
 // ============ ПАРСЕР (ПРАВИЛА) ============
-file: (variableDeclaration | localVariableDeclaration | procedure | function)* EOF;
+bslFile: (variableDeclaration | localVariableDeclaration | procedure | function)* EOF;
+// ПРАВИЛО ДЛЯ ДИРЕКТИВ
+directive: DIRECTIVE_CLIENT | DIRECTIVE_SERVER | DIRECTIVE_CLIENT_SERVER ;
 
 variableDeclaration: PEREM ID (EXPORT)? ';' ;
 localVariableDeclaration: PEREM ID ';' ;
 
-procedure: PROCEDURE ID parameterList? statement* END_PROCEDURE ';'? ;
-function: FUNCTION ID parameterList? statement* END_FUNCTION ';'? ;
+procedure: directive? PROCEDURE ID parameterList? statement* END_PROCEDURE ';'? ;
+function: directive? FUNCTION ID parameterList? statement* END_FUNCTION ';'? ;
 
 parameterList: '(' (parameter (',' parameter)*)? ')' ;
 parameter: ('Знач')? ID ('=' expression)? ;

@@ -95,10 +95,41 @@ def collect_statistics(ast):
         "functions": {"total": len(func_collector.functions)},
         "procedures": {"total": len(func_collector.procedures) if hasattr(func_collector, 'procedures') else 0}
     }
+def get_module_name(file_path: str, extract_dir: str) -> str:
+    """Преобразует путь в понятное имя модуля 1С."""
+    relative_path = os.path.relpath(file_path, extract_dir)
+    parts = relative_path.split(os.sep)
+    
+    # Собираем значимые части пути
+    result_parts = []
+    for part in parts:
+        # Пропускаем служебные папки
+        if part in ['Ext', 'Form', 'Forms', 'Ext', 'Module.bsl', 'ObjectModule.bsl', 'ManagerModule.bsl']:
+            continue
+        if part in ['Documents', 'Catalogs', 'Reports', 'Processing', 
+                   'Документы', 'Справочники', 'Отчеты', 'Обработки']:
+            continue
+        if part and len(part) > 0 and part not in ['bsl']:
+            # Убираем расширение .bsl
+            if part.endswith('.bsl'):
+                part = part[:-4]
+            if part and part not in ['Module', 'ObjectModule', 'ManagerModule']:
+                result_parts.append(part)
+    
+    if result_parts:
+        return ".".join(result_parts)
+    
+    # Если не нашли, берем имя файла без расширения
+    return os.path.splitext(os.path.basename(file_path))[0]
 
 def extract_bsl_files_from_zip(zip_data: bytes, extract_dir: str) -> List[str]:
     """Распаковывает ZIP‑архив и возвращает список путей к .bsl‑файлам."""
     bsl_files = []
+    
+    # Очищаем папку перед распаковкой (только здесь!)
+    import shutil
+    if os.path.exists(extract_dir):
+        shutil.rmtree(extract_dir)
     os.makedirs(extract_dir, exist_ok=True)
     
     # Преобразуем bytes в файловый объект
@@ -107,54 +138,173 @@ def extract_bsl_files_from_zip(zip_data: bytes, extract_dir: str) -> List[str]:
         for root, dirs, files in os.walk(extract_dir):
             for file in files:
                 if file.endswith('.bsl'):
-                    bsl_files.append(os.path.join(root, file))
+                    full_path = os.path.join(root, file)
+                    bsl_files.append(full_path)
+                    print(f"    Найден .bsl файл: {full_path}")
     
     return bsl_files
     
-
-def analyze_bsl_file(file_path: str) -> Dict[str, Any]:
-    """Анализирует один .bsl‑файл и возвращает результаты."""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            code = f.read()
+def parse_module_path(file_path: str, extract_dir: str) -> Dict[str, Any]:
+    """
+    Разбирает путь к .bsl файлу и возвращает структурированную информацию.
+    """
+    
+    relative_path = os.path.relpath(file_path, extract_dir)
+    parts = relative_path.split(os.sep)
+    
+    # Словарь соответствия папок типам метаданных
+    metadata_map = {
+        # Русские названия
+        'Справочники': 'Справочник',
+        'Catalog': 'Справочник',
+        'Catalogs': 'Справочник',
+        'Документы': 'Документ',
+        'Document': 'Документ',
+        'Documents': 'Документ',
+        'Отчеты': 'Отчет',
+        'Report': 'Отчет',
+        'Reports': 'Отчет',
+        'Обработки': 'Обработка',
+        'Processing': 'Обработка',
+        'DataProcessors': 'Обработка',
+        'РегистрыСведений': 'Регистр сведений',
+        'InformationRegister': 'Регистр сведений',
+        'InformationRegisters': 'Регистр сведений',
+        'РегистрыНакопления': 'Регистр накопления',
+        'AccumulationRegister': 'Регистр накопления',
+        'AccumulationRegisters': 'Регистр накопления',
+        'ПланыСчетов': 'План счетов',
+        'ChartOfAccounts': 'План счетов',
+        'ChartsOfAccounts': 'План счетов',
+        'Константы': 'Константа',
+        'Constant': 'Константа',
+        'Constants': 'Константа',
+        'Перечисления': 'Перечисление',
+        'Enumeration': 'Перечисление',
+        'Enumerations': 'Перечисление',
+        'БизнесПроцессы': 'Бизнес-процесс',
+        'BusinessProcess': 'Бизнес-процесс',
+        'BusinessProcesses': 'Бизнес-процесс',
+        'Задачи': 'Задача',
+        'Task': 'Задача',
+        'Tasks': 'Задача',
+    }
+    
+    # Словарь соответствия типов форм для разных объектов
+    form_type_map = {
+        # Для справочников и документов
+        'ФормаЭлемента': 'ФормаЭлемента',
+        'ФормаВыбора': 'ФормаВыбора',
+        'ФормаСписка': 'ФормаСписка',
+        'Форма': 'Форма',
+        'Form': 'Форма',
+        'Forms': 'Форма',
+        # Для документов
+        'ФормаДокумента': 'ФормаДокумента',
+        'ФормаПечати': 'ФормаПечати',
+        # Для отчетов
+        'ФормаОтчета': 'ФормаОтчета',
+        'ФормаНастроек': 'ФормаНастроек',
+        'ФормаВарианта': 'ФормаВарианта',
+        # Для обработок
+        'ФормаОбработки': 'ФормаОбработки',
+        'ФормаНастройки': 'ФормаНастройки',
+        # Общие
+        'ФормаГруппы': 'ФормаГруппы',
+        'ФормаСпискаВыбора': 'ФормаСпискаВыбора',
+    }
+    
+    result = {
+        'module_type': '',
+        'metadata_type': '',
+        'metadata_name': '',
+        'form_name': '',
+        'full_name': ''
+    }
+    
+    # Определяем тип файла (какой модуль)
+    filename = os.path.basename(file_path)
+    module_type_display = {
+        'ObjectModule.bsl': 'МодульОбъекта',
+        'ManagerModule.bsl': 'МодульМенеджера',
+        'Module.bsl': 'МодульФормы',
+        'CommandModule.bsl': 'МодульКоманды',
+        'RecordSetModule.bsl': 'МодульНабораЗаписей',
+        'ValueManagerModule.bsl': 'МодульМенеджераЗначения'
+    }
+    
+    display_module_type = module_type_display.get(filename, '')
+    result['module_type'] = display_module_type
+    
+    # Проходим по частям пути
+    for i, part in enumerate(parts):
+        # Определяем тип метаданных
+        if part in metadata_map:
+            result['metadata_type'] = metadata_map[part]
+            # Ищем имя объекта (следующая часть)
+            for j in range(i + 1, len(parts)):
+                next_part = parts[j]
+                if next_part not in ['Ext', 'Form', 'Forms', 'Формы', 'Module.bsl', 'ObjectModule.bsl', 
+                                     'ManagerModule.bsl', 'CommandModule.bsl', 'ConfigFiles', 'Ext']:
+                    if next_part not in metadata_map:
+                        result['metadata_name'] = next_part
+                        break
+                    else:
+                        break
+                break
         
-        print(f"  Анализ файла: {os.path.basename(file_path)}")
-        
-        ast = parser.parse_string(code, os.path.basename(file_path))
-        
-        if ast is None:
-            return {"module": os.path.basename(file_path), "error": "Ошибка парсинга"}
-        
-        # Собираем статистику
-        statistics = collect_statistics(ast)
-        
-        violations = []
-        if rules:
-            rule_checker = RuleCheckingVisitor(rules)
-            ast.accept(rule_checker)
-            violations = rule_checker.violations
-        
-        return {
-            "module": os.path.basename(file_path),
-            "file_path": file_path,
-            "statistics": statistics,
-            "violations": [
-                {
-                    "rule_code": v.rule_code,
-                    "rule_name": v.rule_name,
-                    "severity": v.severity,
-                    "line": v.line,
-                    "column": v.column,
-                    "message": v.message
-                } for v in violations
-            ]
-        }
-    except Exception as e:
-        print(f"  Ошибка анализа {file_path}: {e}")
-        return {
-            "module": os.path.basename(file_path),
-            "error": f"Ошибка анализа: {str(e)}"
-        }
+        # Определяем имя формы (после папок Forms/Form/Формы/Форма)
+        if part in ['Forms', 'Формы', 'Form', 'Форма'] and i + 1 < len(parts):
+            form_name = parts[i + 1]
+            # Преобразуем имя формы в красивый вид
+            if form_name in form_type_map:
+                result['form_name'] = form_type_map[form_name]
+            else:
+                result['form_name'] = form_name
+    
+    # Если не нашли имя объекта, пробуем найти по пути
+    if not result['metadata_name']:
+        for i, part in enumerate(parts):
+            if part not in ['ConfigFiles', 'config', 'Ext', 'Form', 'Forms', 'Формы', 'Форма', 
+                           'Module.bsl', 'ObjectModule.bsl', 'ManagerModule.bsl', 'CommandModule.bsl']:
+                if part not in metadata_map:
+                    result['metadata_name'] = part
+                    break
+    
+    # Если тип метаданных не найден, но есть имя формы
+    if not result['metadata_type'] and result['form_name']:
+        result['metadata_type'] = 'Общий'
+    
+    # ФОРМИРУЕМ КРАСИВОЕ ПОЛНОЕ ИМЯ (module)
+    full_name_parts = []
+    if result['metadata_type']:
+        full_name_parts.append(result['metadata_type'])
+    if result['metadata_name']:
+        full_name_parts.append(result['metadata_name'])
+    if result['form_name']:
+        full_name_parts.append(result['form_name'])
+    
+    # Добавляем тип модуля (МодульФормы, МодульОбъекта и т.д.)
+    if display_module_type:
+        full_name_parts.append(display_module_type)
+    
+    if full_name_parts:
+        result['full_name'] = '.'.join(full_name_parts)
+    else:
+        result['full_name'] = os.path.splitext(os.path.basename(file_path))[0]
+    
+    # Убираем возможные дублирования
+    result['full_name'] = result['full_name'].replace('..', '.')
+    
+    # Выводим отладочную информацию
+    print(f"  Разбор пути: {relative_path}")
+    print(f"    Тип модуля: {result['module_type']}")
+    print(f"    Тип метаданных: {result['metadata_type']}")
+    print(f"    Имя объекта: {result['metadata_name']}")
+    print(f"    Имя формы: {result['form_name']}")
+    print(f"    Полное имя: {result['full_name']}")
+    
+    return result
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze_zip():
@@ -175,7 +325,6 @@ def analyze_zip():
         # Проверяем сигнатуру ZIP файла (PK)
         if len(zip_data) < 4 or zip_data[:4] != b'PK\x03\x04':
             print(f"❌ Данные не являются ZIP-архивом")
-            # Выводим первые байты для отладки
             print(f"   Первые байты: {zip_data[:20]}")
             return json_unicode({"error": "Файл должен быть ZIP-архивом"}, 400)
         
@@ -198,13 +347,29 @@ def analyze_zip():
         
         for bsl_file in extracted_files:
             print(f"\n🔍 Анализируем: {os.path.basename(bsl_file)}")
-            result = analyze_bsl_file(bsl_file)
+            result = analyze_bsl_file(bsl_file, TEMP_EXTRACT_DIR)
             analysis_results.append(result)
             
             violations_count = len(result.get("violations", []))
             total_violations += violations_count
             print(f"   Нарушений: {violations_count}")
-        
+        quality_metrics = calculate_quality_metrics(analysis_results)
+
+        # Выводим метрики качества в консоль
+        print("\n" + "=" * 60)
+        print("МЕТРИКИ КАЧЕСТВА КОДА")
+        print("=" * 60)
+        print(f"📊 Общее количество нарушений: {quality_metrics['total_violations']}")
+        print(f"📄 Общее количество строк кода: {quality_metrics['total_loc']}")
+        print(f"📈 Плотность нарушений: {quality_metrics['violations_density']} на 100 строк")
+        print(f"⭐ Коэффициент соблюдения стандартов: {quality_metrics['compliance_coefficient']}")
+        print(f"🎯 Теоретический максимум нарушений: {quality_metrics['theoretical_max_violations']}")
+
+        print("\n📋 Нарушения по правилам:")
+        for rule_code, rule_info in quality_metrics['violations_by_rule'].items():
+            print(f"   • {rule_code}: {rule_info['count']} нарушений")
+
+        print("=" * 60)
         # Выводим общую статистику
         print("\n" + "=" * 60)
         print("РЕЗУЛЬТАТЫ АНАЛИЗА")
@@ -226,22 +391,43 @@ def analyze_zip():
                     print(f"   • [{v['rule_code']}] стр.{v['line']}: {v['message']}")
         
         print("=" * 60)
+        original_filename = request.headers.get('X-Filename', 'archive.zip')
         
         # Формируем JSON-ответ
         result = {
             "success": True,
-            "archive_name": "archive.zip",
-            "analysis_date": datetime.datetime.now().isoformat(),
+            "archive_name": original_filename,
+            "analysis_date": datetime.datetime.now().strftime("%d.%m.%Y %H:%M"),
             "modules_analyzed": len(extracted_files),
             "total_violations": total_violations,
             "statistics": {
                 "total_files": len(extracted_files),
                 "total_violations": total_violations
             },
+            "quality_metrics": { 
+                "total_violations": quality_metrics['total_violations'],
+                "total_loc": quality_metrics['total_loc'],
+                "violations_density": quality_metrics['violations_density'],
+                "compliance_coefficient": quality_metrics['compliance_coefficient'],
+                "theoretical_max_violations": quality_metrics['theoretical_max_violations'],
+                "violations_by_rule": quality_metrics['violations_by_rule']
+            },
             "violations": [
-                violation
-                for result in analysis_results
-                for violation in result.get("violations", [])
+                {
+                    "module": analysis_result.get("module", "unknown"),
+                    "module_type": analysis_result.get("module_type", ""),
+                    "metadata_type": analysis_result.get("metadata_type", ""),
+                    "metadata_name": analysis_result.get("metadata_name", ""),
+                    "form_name": analysis_result.get("form_name", ""),
+                    "rule_code": violation["rule_code"],
+                    "rule_name": violation["rule_name"],
+                    "severity": violation["severity"],
+                    "line": violation["line"],
+                    "column": violation["column"],
+                    "message": violation["message"]
+                }
+                for analysis_result in analysis_results
+                for violation in analysis_result.get("violations", [])
             ]
         }
         
@@ -252,9 +438,165 @@ def analyze_zip():
         import traceback
         traceback.print_exc()
         return json_unicode({"error": str(e)}, 500)
+
+def calculate_quality_metrics(analysis_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Рассчитывает метрики качества кода на основе результатов анализа.
     
- 
-  
+    Возвращает словарь с метриками:
+    - total_violations: общее количество нарушений
+    - violations_density: плотность нарушений (нарушений на 100 строк кода)
+    - compliance_coefficient: коэффициент соблюдения стандартов (0-1)
+    - violations_by_rule: количество нарушений по каждому правилу
+    - violations_by_module: количество нарушений по каждому модулю
+    - total_loc: общее количество строк кода
+    - theoretical_max_violations: теоретическое максимальное количество нарушений
+    """
+    
+    # Инициализация
+    total_violations = 0
+    total_loc = 0
+    violations_by_rule = {}
+    violations_by_module = {}
+    module_stats = []  # для хранения информации о каждом модуле
+    
+    # Собираем статистику по модулям
+    for result in analysis_results:
+        module_name = result.get("module", "unknown")
+        module_violations = result.get("violations", [])
+        module_loc = 0
+        
+        # Подсчет LOC (нужно добавить в analyze_bsl_file)
+        statistics = result.get("statistics", {})
+        module_loc = statistics.get("loc", 0)  # TODO: добавить подсчет LOC
+        
+        violations_count = len(module_violations)
+        total_violations += violations_count
+        total_loc += module_loc
+        
+        # Нарушения по модулям
+        violations_by_module[module_name] = {
+            "violations": violations_count,
+            "loc": module_loc,
+            "density": violations_count / module_loc if module_loc > 0 else 0
+        }
+        
+        # Нарушения по правилам
+        for violation in module_violations:
+            rule_code = violation.get("rule_code", "unknown")
+            if rule_code not in violations_by_rule:
+                violations_by_rule[rule_code] = {
+                    "count": 0,
+                    "rule_name": violation.get("rule_name", ""),
+                    "severity": violation.get("severity", "")
+                }
+            violations_by_rule[rule_code]["count"] += 1
+        
+        module_stats.append({
+            "name": module_name,
+            "violations": violations_count,
+            "loc": module_loc,
+            "density": violations_count / module_loc if module_loc > 0 else 0
+        })
+    
+    # Плотность нарушений (на 100 строк кода)
+    total_density = (total_violations / total_loc * 100) if total_loc > 0 else 0
+    
+    # Теоретическое максимальное количество нарушений
+    # Оцениваем как количество правил * количество потенциальных точек проверки
+    total_rules = len(rules) if rules else 1
+    # Оценка V_max: среднее количество нарушений на модуль * количество модулей * коэффициент запаса
+    avg_violations_per_module = total_violations / len(analysis_results) if analysis_results else 0
+    theoretical_max_violations = max(total_violations * 2, len(analysis_results) * total_rules)
+    
+    # Коэффициент соблюдения стандартов
+    compliance_coefficient = 1 - (total_violations / theoretical_max_violations) if theoretical_max_violations > 0 else 1
+    compliance_coefficient = max(0, min(1, compliance_coefficient))  # ограничиваем от 0 до 1
+    
+    return {
+        "total_violations": total_violations,
+        "total_loc": total_loc,
+        "violations_density": round(total_density, 2),
+        "compliance_coefficient": round(compliance_coefficient, 3),
+        "theoretical_max_violations": theoretical_max_violations,
+        "violations_by_rule": violations_by_rule,
+        "violations_by_module": violations_by_module,
+        "module_stats": module_stats
+    }
+
+def analyze_bsl_file(file_path: str, extract_dir: str) -> Dict[str, Any]:
+    """Анализирует один .bsl‑файл и возвращает результаты."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            code = f.read()
+        
+        # Подсчет строк кода (без пустых строк)
+        lines = code.split('\n')
+        loc = len([line for line in lines if line.strip()])  # только непустые строки
+        
+        print(f"  Анализ файла: {os.path.basename(file_path)}")
+        print(f"  Полный путь: {file_path}")
+        print(f"  Строк кода: {loc}")
+        
+        # Разбираем путь к файлу
+        path_info = parse_module_path(file_path, extract_dir)
+        
+        ast = parser.parse_string(code, os.path.basename(file_path))
+        
+        if ast is None:
+            return {
+                "module": path_info['full_name'],
+                "module_type": path_info['module_type'],
+                "metadata_type": path_info['metadata_type'],
+                "metadata_name": path_info['metadata_name'],
+                "form_name": path_info['form_name'],
+                "loc": loc,  
+                "error": "Ошибка парсинга"
+            }
+        
+        statistics = collect_statistics(ast)
+        statistics["loc"] = loc  
+        
+        violations = []
+        if rules:
+            rule_checker = RuleCheckingVisitor(rules)
+            ast.accept(rule_checker)
+            violations = rule_checker.violations
+        
+        return {
+            "module": path_info['full_name'],
+            "module_type": path_info['module_type'],
+            "metadata_type": path_info['metadata_type'],
+            "metadata_name": path_info['metadata_name'],
+            "form_name": path_info['form_name'],
+            "file_path": file_path,
+            "loc": loc,
+            "statistics": statistics,
+            "violations": [
+                {
+                    "rule_code": v.rule_code,
+                    "rule_name": v.rule_name,
+                    "severity": v.severity,
+                    "line": v.line,
+                    "column": v.column,
+                    "message": v.message
+                } for v in violations
+            ]
+        }
+    except Exception as e:
+        print(f"  Ошибка анализа {file_path}: {e}")
+        path_info = parse_module_path(file_path, extract_dir)
+        return {
+            "module": path_info['full_name'],
+            "module_type": path_info['module_type'],
+            "metadata_type": path_info['metadata_type'],
+            "metadata_name": path_info['metadata_name'],
+            "form_name": path_info['form_name'],
+            "loc": 0,  # ← ДОБАВЛЕНО
+            "error": f"Ошибка анализа: {str(e)}"
+        }
+
+
 if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         print("\n" + "=" * 60)

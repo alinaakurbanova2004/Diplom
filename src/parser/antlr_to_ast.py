@@ -577,7 +577,7 @@ class AntlrToAST(BSLVisitor):
 
         try:
             # Определяем тип контекста и вызываем соответствующий метод
-            if isinstance(ctx, BSLParser.FileContext):
+            if isinstance(ctx, BSLParser.BslFileContext):
                 return self.visitFile(ctx)
             elif isinstance(ctx, BSLParser.VariableDeclarationContext):
                 return self.visitVariableDeclaration(ctx)

@@ -43,23 +43,32 @@ class TooManyParameters(BaseRule):
         total_params = len(node.parameters)
         default_params = sum(1 for p in node.parameters if p.has_default_value)
         messages = []
-        
+    
         if total_params > self.max_total_params:
             messages.append(f"всего параметров {total_params} (макс. {self.max_total_params})")
-    
+
         if default_params > self.max_default_params:
             messages.append(f"параметров с умолчанием {default_params} (макс. {self.max_default_params})")
-    
+
         if not self._are_defaults_at_end(node.parameters):
             messages.append("параметры с умолчанием не в конце")
-    
+
         if messages:
+            # Определяем тип узла
+            if hasattr(node, 'is_procedure') and node.is_procedure:
+                node_type = "Процедура"
+            elif node.__class__.__name__ == "ProcedureNode":
+                node_type = "Процедура"
+            else:
+                node_type = "Функция"
+        
             violations.append(self._create_violation(
                 node, module,
-                f"{node.__class__.__name__} '{node.name}': " + "; ".join(messages)
+                f"{node_type} '{node.name}': " + "; ".join(messages)
             ))
-      
+  
         return violations
+      
 
     def _are_defaults_at_end(self, parameters: list) -> bool:
         """Проверяет, что все параметры
