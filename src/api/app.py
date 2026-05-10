@@ -154,7 +154,6 @@ def parse_module_path(file_path: str, extract_dir: str) -> Dict[str, Any]:
     
     # Словарь соответствия папок типам метаданных
     metadata_map = {
-        # Русские названия
         'Справочники': 'Справочник',
         'Catalog': 'Справочник',
         'Catalogs': 'Справочник',
@@ -190,28 +189,21 @@ def parse_module_path(file_path: str, extract_dir: str) -> Dict[str, Any]:
         'Tasks': 'Задача',
     }
     
-    # Словарь соответствия типов форм для разных объектов
+    # Словарь соответствия типов форм
     form_type_map = {
-        # Для справочников и документов
         'ФормаЭлемента': 'ФормаЭлемента',
         'ФормаВыбора': 'ФормаВыбора',
         'ФормаСписка': 'ФормаСписка',
-        'Форма': 'Форма',
-        'Form': 'Форма',
-        'Forms': 'Форма',
-        # Для документов
         'ФормаДокумента': 'ФормаДокумента',
         'ФормаПечати': 'ФормаПечати',
-        # Для отчетов
         'ФормаОтчета': 'ФормаОтчета',
         'ФормаНастроек': 'ФормаНастроек',
         'ФормаВарианта': 'ФормаВарианта',
-        # Для обработок
         'ФормаОбработки': 'ФормаОбработки',
-        'ФормаНастройки': 'ФормаНастройки',
-        # Общие
-        'ФормаГруппы': 'ФормаГруппы',
-        'ФормаСпискаВыбора': 'ФормаСпискаВыбора',
+        'Форма': 'Форма',
+        'Form': 'Форма',
+        'Forms': 'Форма',
+        'Формы': 'Форма',
     }
     
     result = {
@@ -222,30 +214,23 @@ def parse_module_path(file_path: str, extract_dir: str) -> Dict[str, Any]:
         'full_name': ''
     }
     
-    # Определяем тип файла (какой модуль)
     filename = os.path.basename(file_path)
-    module_type_display = {
-        'ObjectModule.bsl': 'МодульОбъекта',
-        'ManagerModule.bsl': 'МодульМенеджера',
-        'Module.bsl': 'МодульФормы',
-        'CommandModule.bsl': 'МодульКоманды',
-        'RecordSetModule.bsl': 'МодульНабораЗаписей',
-        'ValueManagerModule.bsl': 'МодульМенеджераЗначения'
-    }
     
-    display_module_type = module_type_display.get(filename, '')
-    result['module_type'] = display_module_type
-    
-    # Проходим по частям пути
+    # Проходим по частям пути ИСКЛЮЧАЯ имя файла
     for i, part in enumerate(parts):
+        # Пропускаем имя файла
+        if part == filename:
+            continue
+            
         # Определяем тип метаданных
         if part in metadata_map:
             result['metadata_type'] = metadata_map[part]
-            # Ищем имя объекта (следующая часть)
+            # Ищем имя объекта (следующая часть, которая не служебная)
             for j in range(i + 1, len(parts)):
                 next_part = parts[j]
-                if next_part not in ['Ext', 'Form', 'Forms', 'Формы', 'Module.bsl', 'ObjectModule.bsl', 
-                                     'ManagerModule.bsl', 'CommandModule.bsl', 'ConfigFiles', 'Ext']:
+                # Исключаем служебные папки и имя файла
+                if next_part not in ['Ext', 'Form', 'Forms', 'Формы', filename,
+                                     'ManagerModule.bsl', 'CommandModule.bsl', 'ConfigFiles']:
                     if next_part not in metadata_map:
                         result['metadata_name'] = next_part
                         break
@@ -253,29 +238,27 @@ def parse_module_path(file_path: str, extract_dir: str) -> Dict[str, Any]:
                         break
                 break
         
-        # Определяем имя формы (после папок Forms/Form/Формы/Форма)
-        if part in ['Forms', 'Формы', 'Form', 'Форма'] and i + 1 < len(parts):
-            form_name = parts[i + 1]
-            # Преобразуем имя формы в красивый вид
-            if form_name in form_type_map:
-                result['form_name'] = form_type_map[form_name]
-            else:
-                result['form_name'] = form_name
+        # Определяем имя формы
+        if part in ['Forms', 'Формы', 'Form', 'Форма']:
+            for j in range(i + 1, len(parts)):
+                next_part = parts[j]
+                if next_part not in ['Ext', filename]:
+                    if next_part in form_type_map:
+                        result['form_name'] = form_type_map[next_part]
+                    else:
+                        result['form_name'] = next_part
+                    break
     
-    # Если не нашли имя объекта, пробуем найти по пути
+    # Если не нашли имя объекта, берем последнюю неслужебную часть
     if not result['metadata_name']:
-        for i, part in enumerate(parts):
-            if part not in ['ConfigFiles', 'config', 'Ext', 'Form', 'Forms', 'Формы', 'Форма', 
-                           'Module.bsl', 'ObjectModule.bsl', 'ManagerModule.bsl', 'CommandModule.bsl']:
+        for part in reversed(parts):
+            if part not in ['Ext', 'Form', 'Forms', 'Формы', 'ConfigFiles', filename,
+                           'ObjectModule.bsl', 'ManagerModule.bsl', 'Module.bsl']:
                 if part not in metadata_map:
                     result['metadata_name'] = part
                     break
     
-    # Если тип метаданных не найден, но есть имя формы
-    if not result['metadata_type'] and result['form_name']:
-        result['metadata_type'] = 'Общий'
-    
-    # ФОРМИРУЕМ КРАСИВОЕ ПОЛНОЕ ИМЯ (module)
+    # ФОРМИРУЕМ ПОЛНОЕ ИМЯ (БЕЗ Module.bsl и МодульФормы)
     full_name_parts = []
     if result['metadata_type']:
         full_name_parts.append(result['metadata_type'])
@@ -284,21 +267,19 @@ def parse_module_path(file_path: str, extract_dir: str) -> Dict[str, Any]:
     if result['form_name']:
         full_name_parts.append(result['form_name'])
     
-    # Добавляем тип модуля (МодульФормы, МодульОбъекта и т.д.)
-    if display_module_type:
-        full_name_parts.append(display_module_type)
-    
     if full_name_parts:
         result['full_name'] = '.'.join(full_name_parts)
     else:
-        result['full_name'] = os.path.splitext(os.path.basename(file_path))[0]
+        result['full_name'] = os.path.splitext(filename)[0]
     
-    # Убираем возможные дублирования
+    # Очищаем от лишнего
     result['full_name'] = result['full_name'].replace('..', '.')
+    result['full_name'] = result['full_name'].replace('.Module.bsl', '')
+    result['full_name'] = result['full_name'].replace('.ObjectModule.bsl', '')
+    result['full_name'] = result['full_name'].strip('.')
     
     # Выводим отладочную информацию
     print(f"  Разбор пути: {relative_path}")
-    print(f"    Тип модуля: {result['module_type']}")
     print(f"    Тип метаданных: {result['metadata_type']}")
     print(f"    Имя объекта: {result['metadata_name']}")
     print(f"    Имя формы: {result['form_name']}")

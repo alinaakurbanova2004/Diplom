@@ -18,7 +18,7 @@ class TooManyParameters(BaseRule):
         self.name = "Слишком много параметров"
         self.description = (
             "Функция/процедура должна иметь не более 7 параметров, "
-            "из них не более 3 со значениями по умолчанию"
+            "из них не более 3 со значениями по умолчанию."
         )
         self.severity = "WARNING"
         self.max_total_params = 7
@@ -46,13 +46,13 @@ class TooManyParameters(BaseRule):
     
         if total_params > self.max_total_params:
             messages.append(f"всего параметров {total_params} (макс. {self.max_total_params})")
-
+    
         if default_params > self.max_default_params:
             messages.append(f"параметров с умолчанием {default_params} (макс. {self.max_default_params})")
-
+    
         if not self._are_defaults_at_end(node.parameters):
             messages.append("параметры с умолчанием не в конце")
-
+    
         if messages:
             # Определяем тип узла
             if hasattr(node, 'is_procedure') and node.is_procedure:
@@ -62,13 +62,17 @@ class TooManyParameters(BaseRule):
             else:
                 node_type = "Функция"
         
+            # Добавляем точку в конце
+            message_text = f"{node_type} '{node.name}': " + "; ".join(messages)
+            if not message_text.endswith('.'):
+                message_text += "."
+        
             violations.append(self._create_violation(
                 node, module,
-                f"{node_type} '{node.name}': " + "; ".join(messages)
+                message_text
             ))
-  
+    
         return violations
-      
 
     def _are_defaults_at_end(self, parameters: list) -> bool:
         """Проверяет, что все параметры

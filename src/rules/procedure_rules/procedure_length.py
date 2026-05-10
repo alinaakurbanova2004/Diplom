@@ -9,7 +9,7 @@ class ProcedureLength(BaseRule):
     def __init__(self):
         self.code = "FUN-03"
         self.name = "Слишком длинная процедура"
-        self.description = "Процедура должна содержать не более 50 строк"
+        self.description = "Процедура должна содержать не более 50 строк."
         self.severity = "WARNING"
         self.max_lines = 50
 

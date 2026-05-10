@@ -10,7 +10,7 @@ class EmptyProcedure(BaseRule):
     def __init__(self):
         self.code = "FUN-02"
         self.name = "Пустые процедуры и функции запрещены"
-        self.description = "Процедура или функция должна содержать хотя бы один оператор"
+        self.description = "Процедура или функция должна содержать хотя бы один оператор."
         self.severity = "WARNING"
 
     def check(self, module: ModuleNode) -> List[Violation]:

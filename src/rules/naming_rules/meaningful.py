@@ -11,7 +11,7 @@ class MeaningfulVariable(BaseRule):
         self.code = "VAR-01"
         self.name = "Понятное имя переменной"
         self.description = (
-            "Имя переменной должно отражать её назначение из предметной области"
+            "Имя переменной должно отражать её назначение из предметной области."
         )
         self.severity = "WARNING"
 
@@ -79,6 +79,6 @@ class MeaningfulVariable(BaseRule):
             message=(
                 f"Переменная '{var.name}'{context_info} имеет "
                 f"непонятное назначение. Используйте полные "
-                f"названия из предметной области"
+                f"названия из предметной области."
             ),
         )

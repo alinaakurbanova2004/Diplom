@@ -9,7 +9,7 @@ class MissingProcedureComment(BaseRule):
     def __init__(self):
         self.code = "FUN-05"
         self.name = "Отсутствует описание процедуры или функции"
-        self.description = "Добавьте комментарий перед процедурой или функцией с описанием"
+        self.description = "Добавьте комментарий перед процедурой или функцией с описанием."
         self.severity = "INFO"
 
     def check(self, module: ModuleNode) -> List[Violation]:

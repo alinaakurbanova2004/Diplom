@@ -13,7 +13,7 @@ class CamelCase(BaseRule):
     def __init__(self):
         self.code = "VAR-02"
         self.name = "CamelCase для составных имен"
-        self.description = "Имена переменных должны быть в CamelCase: слова слитно, каждое с большой буквы"
+        self.description = "Имена переменных должны быть в CamelCase: слова слитно, каждое с большой буквы."
         self.severity = "WARNING"
 
         # Разрешённые исключения (односимвольные переменные-счётчики)
@@ -102,5 +102,5 @@ class CamelCase(BaseRule):
             module_name=module.name,
             line=line,
             column=col,
-            message=f"Переменная '{var.name}'{context_info} должна быть в CamelCase: слова слитно, каждое с большой буквы",
+            message=f"Переменная '{var.name}'{context_info} должна быть в CamelCase: слова слитно, каждое с большой буквы.",
         )

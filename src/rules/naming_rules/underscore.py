@@ -11,7 +11,7 @@ class WithoutUnderscorePrefix(BaseRule):
         self.code = "VAR-03"
         self.name = "Запрет на подчеркивание в начале"
         self.description = (
-            "Имена переменных не должны начинаться с символа подчеркивания"
+            "Имена переменных не должны начинаться с символа подчеркивания."
         )
         self.severity = "ERROR"
 

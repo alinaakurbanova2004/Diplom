@@ -10,7 +10,7 @@ class OneStatementPerLine(BaseRule):
     def __init__(self):
         self.code = "FUN-01"
         self.name = "Один оператор в строке"
-        self.description = "Не пишите нескольких операторов в одной строке"
+        self.description = "Не пишите нескольких операторов в одной строке."
         self.severity = "WARNING"
 
     def check(self, module: ModuleNode) -> List[Violation]:
