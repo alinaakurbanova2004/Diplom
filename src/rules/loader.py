@@ -100,3 +100,28 @@ class RuleLoader:
             param_value = param_value.lower() == 'true'
         
         setattr(rule, param_name, param_value)
+
+        # В rule_loader.py добавить:
+
+    def sync_rule_from_file(self, file_path: Path, rule_class) -> Dict:
+        """Синхронизирует ручное правило с БД (создаёт запись, если её нет)"""
+        rule = rule_class()
+    
+        # Проверяем, есть ли уже такое правило в БД
+        existing = self.rule_repo.get_rule_by_code(rule.code)
+    
+        if existing:
+            return existing  # уже есть, ничего не делаем
+    
+        # Создаём запись в БД
+        rule_data = {
+            'code': rule.code,
+            'name': rule.name,
+            'description': getattr(rule, 'description', ''),
+            'severity': rule.severity,
+            'is_active': getattr(rule, 'enabled', True),
+            'file_path': str(file_path.relative_to(self.rules_base_path)),
+            'class_name': rule.__class__.__name__
+        }
+        rule_id = self.rule_repo.save_rule(rule_data)
+        return {'id': rule_id, **rule_data}

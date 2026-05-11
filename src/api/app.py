@@ -24,9 +24,12 @@ from src.visitor.rules.rule_checking_visitor import RuleCheckingVisitor
 from src.visitor.collectors import VariableCollector, FunctionCollector
 from src.visitor.factory import VisitorFactory
 
+from flask import render_template, request, redirect, url_for, flash
+from src.rules.rule_generator import RuleGenerator
 app = Flask(__name__)
 CORS(app)
 
+app.template_folder = os.path.join(current_dir, 'templates')
 # Папка для временных файлов
 TEMP_EXTRACT_DIR = os.path.join(project_root, "temp_extract")
 os.makedirs(TEMP_EXTRACT_DIR, exist_ok=True)
@@ -577,6 +580,146 @@ def analyze_bsl_file(file_path: str, extract_dir: str) -> Dict[str, Any]:
             "error": f"Ошибка анализа: {str(e)}"
         }
 
+@app.route("/admin/rules")
+def admin_rules():
+    """Список всех правил"""
+    from src.database.db_manager import RuleRepository
+    rule_repo = RuleRepository(db)
+    rules = rule_repo.get_all_rules()  # нужно добавить метод
+    
+    # Если метод get_all_rules не существует, временно используем RuleRegistry
+    if not rules:
+        from src.rules.rule_registry import RuleRegistry
+        rules_data = []
+        for rule in RuleRegistry.get_all_rules():
+            rules_data.append({
+                'id': getattr(rule, 'id', 0),
+                'code': rule.code,
+                'name': rule.name,
+                'description': getattr(rule, 'description', ''),
+                'severity': rule.severity,
+                'is_active': getattr(rule, 'enabled', True)
+            })
+        rules = rules_data
+    
+    return render_template("admin/rules.html", rules=rules)
+
+
+@app.route("/admin/rules/new", methods=["GET", "POST"])
+def admin_rule_new():
+    """Создание нового правила"""
+    if request.method == "POST":
+        form_data = {
+            'code': request.form.get('code'),
+            'name': request.form.get('name'),
+            'description': request.form.get('description', ''),
+            'severity': request.form.get('severity', 'WARNING'),
+            'rule_type': 'custom',  # или можно определить по коду
+            'max_params': int(request.form.get('max_params', 8)),
+            'min_length': int(request.form.get('min_length', 3)),
+            'forbidden_words': request.form.get('forbidden_words', ''),
+            'camelcase_prefix': request.form.get('camelcase_prefix', ''),
+            'is_active': request.form.get('is_active') == 'true'
+        }
+        
+        # Определяем тип правила по коду
+        code_prefix = form_data['code'].split('-')[0]
+        if code_prefix == 'FUN':
+            form_data['rule_type'] = 'max_params'
+        elif code_prefix == 'VAR':
+            # По имени можно определить тип
+            if 'длин' in form_data['name'] or 'Length' in form_data['name']:
+                form_data['rule_type'] = 'min_length'
+            elif 'Camel' in form_data['name']:
+                form_data['rule_type'] = 'camelcase'
+            else:
+                form_data['rule_type'] = 'forbidden_words'
+        
+        try:
+            # Генерируем файл правила
+            file_path = RuleGenerator.generate_rule_file(form_data)
+            
+            # Сохраняем в БД
+            from src.database.db_manager import RuleRepository
+            rule_repo = RuleRepository(db)
+            # Нужно добавить метод save_rule в RuleRepository
+            # Пока просто выводим путь
+            flash(f"Правило {form_data['code']} создано! Файл: {file_path}")
+            return redirect(url_for('admin_rules'))
+        except Exception as e:
+            flash(f"Ошибка создания правила: {e}")
+            return redirect(url_for('admin_rule_new'))
+    
+    return render_template("admin/rule_form.html", rule=None)
+
+
+@app.route("/admin/rules/<int:rule_id>/edit", methods=["GET", "POST"])
+
+def admin_rule_edit(rule_id):
+    from src.database.db_manager import RuleRepository
+    rule_repo = RuleRepository(db)
+    rule = rule_repo.get_rule_by_id(rule_id)
+    
+    if not rule:
+        flash("Правило не найдено!")
+        return redirect(url_for('admin_rules'))
+    
+    if request.method == "POST":
+        # 1. Обновляем запись в БД
+        update_data = {
+            'name': request.form.get('name'),
+            'description': request.form.get('description', ''),
+            'severity': request.form.get('severity', 'WARNING'),
+            'is_active': request.form.get('is_active') == 'true'
+        }
+        rule_repo.update_rule(rule_id, update_data)
+        
+        # 2. Обновляем параметры правила (max_params, min_length и т.д.)
+        # Сохраняем параметры в таблицу rule_parameter
+        rule_repo.delete_rule_parameters(rule_id)  # удаляем старые
+        
+        if request.form.get('max_params'):
+            rule_repo.save_rule_parameter(rule_id, 'max_params', request.form.get('max_params'), 'integer')
+        if request.form.get('min_length'):
+            rule_repo.save_rule_parameter(rule_id, 'min_length', request.form.get('min_length'), 'integer')
+        if request.form.get('forbidden_words'):
+            rule_repo.save_rule_parameter(rule_id, 'forbidden_words', request.form.get('forbidden_words'), 'string')
+        if request.form.get('camelcase_prefix'):
+            rule_repo.save_rule_parameter(rule_id, 'camelcase_prefix', request.form.get('camelcase_prefix'), 'string')
+        
+        # 3. Перегенерируем файл правила
+        from src.rules.rule_generator import RuleGenerator
+        file_path = RuleGenerator.generate_rule_file(rule_id)  # читает параметры из БД
+        
+        # 4. Обновляем file_path и class_name в БД (если изменились)
+        # (можно оставить как есть или перезаписать)
+        
+        flash(f"Правило {rule['code']} обновлено!")
+        return redirect(url_for('admin_rules'))
+    
+    # GET: загружаем параметры правила из БД для отображения в форме
+    params = rule_repo.get_parameters_for_rule(rule_id)
+    param_dict = {p['param_name']: p['param_value'] for p in params}
+    
+    return render_template("admin/rule_form.html", rule={**rule, **param_dict})
+
+def admin_rule_delete(rule_id):
+    """Удаление правила"""
+    from src.database.db_manager import RuleRepository
+    rule_repo = RuleRepository(db)
+    rule = rule_repo.get_rule_by_id(rule_id)
+    
+    if rule:
+        # Удаляем файл правила
+        file_path = Path(__file__).parent.parent / "rules" / rule.get('file_path', '')
+        if file_path.exists():
+            file_path.unlink()
+        
+        # Удаляем из БД
+        # rule_repo.delete_rule(rule_id)
+        flash(f"Правило {rule['code']} удалено!")
+    
+    return redirect(url_for('admin_rules'))
 
 if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true":

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление правилами анализа</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table {
+            width: 100%;
+            table-layout: fixed;
+            /* Фиксируем макет, чтобы ширина не зависела от содержимого */
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+            text-align: left;
+            vertical-align: middle;
+            /* Предотвращает перенос текста, обрезая его с многоточием */
+        }
+
+        /* Колонки */
+        th:nth-child(6),
+        td:nth-child(6) {
+            width: 300px;
+            /* Ширина под кнопки */
+            max-width: 300px;
+            white-space: nowrap;
+        }
+
+        /* Для остальных колонок используем проценты или auto, чтобы они сжимались равномерно */
+        /* Колонки с фиксированной шириной (ручное управление) */
+        th:nth-child(1),
+        td:nth-child(1) {
+            width: 80px;
+        }
+
+        /* Код */
+        th:nth-child(2),
+        td:nth-child(2) {
+            width: 250px;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+
+        /* Принудительно для колонки Описание — ОДНА СТРОКА с многоточием */
+        td:nth-child(3) {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 350px;
+        }
+
+        /* Колонка «Критичность» — расширяем, чтобы видеть полное слово */
+        th:nth-child(4),
+        td:nth-child(4) {
+            width: 120px;
+            max-width: 120px;
+            white-space: normal;
+        }
+
+        /* Колонка «Статус» */
+        th:nth-child(5),
+        td:nth-child(5) {
+            width: 100px;
+            max-width: 100px;
+            white-space: normal;
+        }
+
+        /* Стили кнопок (опционально, для красоты) */
+        button {
+            margin: 2px;
+            padding: 4px 8px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #90ee90;
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #007ba7;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #007ba7;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: middle;
+        }
+
+        tr {
+            height: 52px;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            /* Это ключевое свойство — позволяет кнопкам переноситься на новую строку */
+            gap: 8px;
+            align-items: center;
+            height: 100%;
+        }
+
+        th {
+            background: #bbbbbb;
+            font-weight: 600;
+            color: white;
+        }
+
+
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .severity-ERROR {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .severity-WARNING {
+            color: #f59e0b;
+            font-weight: bold;
+        }
+
+        .severity-INFO {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: #e5e7eb;
+        }
+
+        .badge-active {
+            background: #10b981;
+            color: white;
+        }
+
+        .badge-inactive {
+            background: #ef4444;
+            color: white;
+        }
+
+        .filter-bar {
+            padding: 15px 20px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            width: 250px;
+        }
+
+        .flash-message {
+            padding: 12px 20px;
+            margin: 0;
+            background: #d1fae5;
+            color: #065f46;
+            border-bottom: 1px solid #a7f3d0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Управление правилами анализа</h1>
+            <a href="/admin/rules/new" class="btn btn-primary">Создать правило</a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="flash-message">
+            {% for message in messages %}
+            {{ message }}
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="filter-bar">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск по коду или названию...">
+            <select id="severityFilter" class="search-input">
+                <option value="">Все уровни критичности</option>
+                <option value="ERROR">ERROR</option>
+                <option value="WARNING">WARNING</option>
+                <option value="INFO">INFO</option>
+            </select>
+            <select id="statusFilter" class="search-input">
+                <option value="">Все статусы</option>
+                <option value="active">Активные</option>
+                <option value="inactive">Неактивные</option>
+            </select>
+        </div>
+
+        <table id="rulesTable">
+            <thead>
+                <tr>
+                    <th>Код</th>
+                    <th>Название</th>
+                    <th>Описание</th>
+                    <th>Критичность</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule in rules %}
+                <tr class="rule-row" data-code="{{ rule.code }}" data-name="{{ rule.name }}"
+                    data-severity="{{ rule.severity }}" data-active="{{ rule.is_active }}">
+                    <td><code>{{ rule.code }}</code></td>
+                    <td>{{ rule.name }}</td>
+                    <td>{{ rule.description[:80] }}{% if rule.description|length > 80 %}...{% endif %}</td>
+                    <td class="severity-{{ rule.severity }}">{{ rule.severity }}</td>
+                    <td>
+                        <span class="badge {% if rule.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+                            {% if rule.is_active %}Активно{% else %}Неактивно{% endif %}
+                        </span>
+                    </td>
+                    <td class="actions">
+                        <form action="/admin/rules/{{ rule.id }}/toggle" method="POST" style="display:inline;">
+                            <button type="submit"
+                                class="btn btn-sm {% if rule.is_active %}btn-secondary{% else %}btn-success{% endif %}"
+                                style="min-width: 65px; padding: 4px 6px;">
+                                {% if rule.is_active %}🔴 Выкл{% else %}🟢 Вкл{% endif %}
+                            </button>
+                        </form>
+                        <a href="/admin/rules/{{ rule.id }}/edit" class="btn btn-warning btn-sm">Редактировать</a>
+                        <form action="/admin/rules/{{ rule.id }}/delete" method="POST" style="display:inline;"
+                            onsubmit="return confirm('Удалить правило {{ rule.code }}?');">
+                            <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const severityFilter = document.getElementById('severityFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('.rule-row');
+
+            rows.forEach(row => {
+                const code = row.dataset.code.toLowerCase();
+                const name = row.dataset.name.toLowerCase();
+                const severity = row.dataset.severity;
+                const isActive = row.dataset.active === 'True';
+
+                let matches = true;
+
+                if (searchTerm && !code.includes(searchTerm) && !name.includes(searchTerm)) {
+                    matches = false;
+                }
+
+                if (severityFilter && severity !== severityFilter) {
+                    matches = false;
+                }
+
+                if (statusFilter === 'active' && !isActive) {
+                    matches = false;
+                }
+                if (statusFilter === 'inactive' && isActive) {
+                    matches = false;
+                }
+
+                row.style.display = matches ? '' : 'none';
+            });
+        }
+
+        document.getElementById('searchInput').addEventListener('keyup', filterTable);
+        document.getElementById('severityFilter').addEventListener('change', filterTable);
+        document.getElementById('statusFilter').addEventListener('change', filterTable);
+    </script>
+</body>
+
+</html>

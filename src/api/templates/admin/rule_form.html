@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if rule %}Редактирование правила{% else %}Создание правила{% endif %}</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #90ee90;
+            color: white;
+            padding: 20px 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .form-container {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        /* Отдельный контейнер для заголовка */
+        .parameter-group-header {
+            background-color: #9ca3af;
+            margin-bottom: 0;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .parameter-group-title {
+            font-weight: bold;
+            color: white;
+            padding: 10px 15px;
+            margin: 0;
+            font-size: 16px;
+        }
+
+        /* Отдельный контейнер для содержимого */
+        .parameter-group-content {
+            background: #f9fafb;
+            padding: 15px;
+            margin-bottom: 20px;
+            margin-top: 0;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .form-group:last-of-type input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            font-weight: normal;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .form-group.checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            /* расстояние между надписью и чекбоксом */
+        }
+
+        .form-group.checkbox-row label {
+            margin-bottom: 0;
+            /* убираем стандартный отступ снизу у label */
+        }
+
+        .form-group.checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            width: 150px;
+            white-space: nowrap;
+        }
+
+        .form-group.checkbox-row label {
+            margin-bottom: 0;
+            /* убираем стандартный отступ снизу у label */
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #007ba7;
+            color: white;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: #007ba7;
+        }
+
+        .btn-secondary {
+            background: #9ca3af;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #6b7280;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+
+        .parameter-group {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .parameter-group h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #374151;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{% if rule %}Редактирование правила {{ rule.code }}{% else %}Создание нового правила{% endif %}</h1>
+        </div>
+        <div class="form-container">
+            <form method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Код правила</label>
+                        <input type="text" name="code" value="{{ rule.code if rule else '' }}" required
+                            pattern="[A-Z]{3}-\d{2}" placeholder="VAR-02">
+                        <div class="help-text">Формат: XXX-XX (например, VAR-02, FUN-04)</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Критичности</label>
+                        <select name="severity" required>
+                            <option value="INFO" {% if rule and rule.severity=='INFO' %}selected{% endif %}>INFO
+                            </option>
+                            <option value="WARNING" {% if rule and rule.severity=='WARNING' %}selected{% endif %}>
+                                WARNING</option>
+                            <option value="ERROR" {% if rule and rule.severity=='ERROR' %}selected{% endif %}>ERROR
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Название правила</label>
+                    <input type="text" name="name" value="{{ rule.name if rule else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea name="description">{{ rule.description if rule else '' }}</textarea>
+                </div>
+
+                <!-- Блок Параметры правил (отдельный контейнер) -->
+                <div class="parameter-group-header">
+                    <h3 class="parameter-group-title">Параметры правила</h3>
+                </div>
+
+                <!-- Блок с полями (отдельный контейнер) -->
+                <div class="parameter-group-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Максимальное количество параметров</label>
+                            <input type="number" name="max_params"
+                                value="{{ rule.max_params if rule and rule.max_params else 8 }}" min="1" max="30">
+                        </div>
+                        <div class="form-group">
+                            <label>Минимальная длина имени</label>
+                            <input type="number" name="min_length"
+                                value="{{ rule.min_length if rule and rule.min_length else 3 }}" min="1" max="50">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Запрещённые слова (через запятую)</label>
+                        <input type="text" name="forbidden_words"
+                            value="{{ rule.forbidden_words if rule and rule.forbidden_words else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Требуемый префикс</label>
+                        <input type="text" name="camelcase_prefix"
+                            value="{{ rule.camelcase_prefix if rule and rule.camelcase_prefix else '' }}">
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-row">
+                    <label for="is_active">Правило активно</label>
+                    <input type="checkbox" id="is_active" name="is_active" value="true" {% if rule and rule.is_active
+                        %}checked{% elif not rule %}checked{% endif %}>
+                </div>
+                <div class="buttons">
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                    <a href="/admin/rules" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

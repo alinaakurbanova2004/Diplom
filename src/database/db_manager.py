@@ -62,6 +62,8 @@ class RuleRepository:
     def __init__(self, db: DatabaseConnection):
         self.db = db
     
+    # ==================== СУЩЕСТВУЮЩИЕ МЕТОДЫ ====================
+    
     def get_all_active_rules(self) -> List[Dict]:
         """Получает все активные правила из БД"""
         query = """
@@ -96,6 +98,146 @@ class RuleRepository:
             WHERE rule_id = %s
         """
         return self.db.execute_query(query, (rule_id,))
+    
+    # ==================== НОВЫЕ МЕТОДЫ ДЛЯ АДМИН-ПАНЕЛИ ====================
+    
+    def get_all_rules(self) -> List[Dict]:
+        """Получает ВСЕ правила из БД (активные и неактивные)"""
+        query = """
+            SELECT id, code, name, description, severity, is_active, 
+                   file_path, class_name
+            FROM development_rule
+            ORDER BY code
+        """
+        return self.db.execute_query(query)
+    
+    def get_rule_by_id(self, rule_id: int) -> Optional[Dict]:
+        """Получает правило по ID"""
+        query = "SELECT * FROM development_rule WHERE id = %s"
+        result = self.db.execute_query(query, (rule_id,))
+        return result[0] if result else None
+    
+    def save_rule(self, rule_data: Dict) -> int:
+        """
+        Сохраняет новое правило в БД.
+        
+        rule_data должен содержать:
+            - code: str (например, "VAR-02")
+            - name: str (название правила)
+            - description: str (описание)
+            - severity: str (INFO, WARNING, ERROR)
+            - is_active: bool
+            - file_path: str (путь к .py файлу)
+            - class_name: str (имя класса в файле)
+        
+        Возвращает ID созданного правила
+        """
+        query = """
+            INSERT INTO development_rule (code, name, description, severity, is_active, file_path, class_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """
+        params = (
+            rule_data['code'],
+            rule_data['name'],
+            rule_data.get('description', ''),
+            rule_data['severity'],
+            rule_data.get('is_active', True),
+            rule_data.get('file_path', ''),
+            rule_data.get('class_name', '')
+        )
+        result = self.db.execute_query(query, params)
+        return result[0]['id'] if result else None
+    
+    def update_rule(self, rule_id: int, rule_data: Dict) -> bool:
+        """
+        Обновляет существующее правило.
+        
+        rule_data может содержать:
+            - name: str
+            - description: str
+            - severity: str
+            - is_active: bool
+        """
+        query = """
+            UPDATE development_rule 
+            SET name = %s, description = %s, severity = %s, is_active = %s
+            WHERE id = %s
+        """
+        params = (
+            rule_data.get('name'),
+            rule_data.get('description', ''),
+            rule_data.get('severity', 'WARNING'),
+            rule_data.get('is_active', True),
+            rule_id
+        )
+        rows_affected = self.db.execute_non_query(query, params)
+        return rows_affected > 0
+    
+    def update_rule_file_path(self, rule_id: int, file_path: str, class_name: str) -> bool:
+        """Обновляет путь к файлу и имя класса правила"""
+        query = """
+            UPDATE development_rule 
+            SET file_path = %s, class_name = %s
+            WHERE id = %s
+        """
+        rows_affected = self.db.execute_non_query(query, (file_path, class_name, rule_id))
+        return rows_affected > 0
+    
+    def delete_rule(self, rule_id: int) -> bool:
+        """Удаляет правило из БД"""
+        # Сначала удаляем связанные параметры
+        self.db.execute_non_query("DELETE FROM rule_parameter WHERE rule_id = %s", (rule_id,))
+        # Затем удаляем само правило
+        query = "DELETE FROM development_rule WHERE id = %s"
+        rows_affected = self.db.execute_non_query(query, (rule_id,))
+        return rows_affected > 0
+    
+    def toggle_rule_status(self, rule_id: int, is_active: bool) -> bool:
+        """Включает или выключает правило"""
+        query = "UPDATE development_rule SET is_active = %s WHERE id = %s"
+        rows_affected = self.db.execute_non_query(query, (is_active, rule_id))
+        return rows_affected > 0
+    
+    def save_rule_parameter(self, rule_id: int, param_name: str, param_value: str, param_type: str = 'string') -> int:
+        """Сохраняет параметр для правила"""
+        query = """
+            INSERT INTO rule_parameter (rule_id, param_name, param_value, param_type, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+            RETURNING id
+        """
+        params = (rule_id, param_name, param_value, param_type)
+        result = self.db.execute_query(query, params)
+        return result[0]['id'] if result else None
+    
+    def delete_rule_parameters(self, rule_id: int) -> bool:
+        """Удаляет все параметры правила"""
+        query = "DELETE FROM rule_parameter WHERE rule_id = %s"
+        rows_affected = self.db.execute_non_query(query, (rule_id,))
+        return rows_affected > 0
+    
+    def get_rules_by_severity(self, severity: str) -> List[Dict]:
+        """Получает правила по severity (INFO, WARNING, ERROR)"""
+        query = """
+            SELECT id, code, name, description, severity, is_active
+            FROM development_rule
+            WHERE severity = %s AND is_active = TRUE
+            ORDER BY code
+        """
+        return self.db.execute_query(query, (severity,))
+    
+    def get_rules_count(self) -> int:
+        """Возвращает общее количество правил в БД"""
+        query = "SELECT COUNT(*) as count FROM development_rule"
+        result = self.db.execute_query(query)
+        return result[0]['count'] if result else 0
+    
+    def get_active_rules_count(self) -> int:
+        """Возвращает количество активных правил"""
+        query = "SELECT COUNT(*) as count FROM development_rule WHERE is_active = TRUE"
+        result = self.db.execute_query(query)
+        return result[0]['count'] if result else 0
+
 
 
 class ViolationRepository:
@@ -165,3 +307,4 @@ class ModuleRepository:
         query = "SELECT id FROM module WHERE name = %s"
         result = self.db.execute_query(query, (name,))
         return result[0]['id'] if result else None
+   
