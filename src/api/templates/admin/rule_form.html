@@ -235,10 +235,11 @@
                 </div>
 
                 <div class="parameter-group-content">
-                    {% if rule.max_params is not none %}
+                    {% if rule.max_total_params is not none %}
                     <div class="form-group">
                         <label>Максимальное количество параметров</label>
-                        <input type="number" name="max_params" value="{{ rule.max_total_params }}" min="1" max="30">
+                        <input type="number" name="max_total_params" value="{{ rule.max_total_params }}" min="1"
+                            max="30">
                         <div class="help-text">Максимальное количество параметров у функции/процедуры</div>
                     </div>
                     {% endif %}
@@ -273,14 +274,6 @@
                         <label>Запрещённые слова (через запятую)</label>
                         <input type="text" name="forbidden_words" value="{{ rule.forbidden_words }}">
                         <div class="help-text">Слова, которые нельзя использовать в качестве имён переменных</div>
-                    </div>
-                    {% endif %}
-
-                    {% if rule.camelcase_prefix is not none %}
-                    <div class="form-group">
-                        <label>Требуемый префикс</label>
-                        <input type="text" name="camelcase_prefix" value="{{ rule.camelcase_prefix }}">
-                        <div class="help-text">Имена должны начинаться с этого префикса (опционально)</div>
                     </div>
                     {% endif %}
                 </div>
