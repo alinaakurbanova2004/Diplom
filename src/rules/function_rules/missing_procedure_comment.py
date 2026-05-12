@@ -3,6 +3,7 @@ from src.parser.ast_nodes import ModuleNode
 from src.rules.base_rule import BaseRule
 from src.rules.violation import Violation
 
+
 class MissingProcedureComment(BaseRule):
     """Правило FUN-05: У каждой процедуры и функции должен быть комментарий с описанием"""
 
@@ -15,22 +16,16 @@ class MissingProcedureComment(BaseRule):
     def check(self, module: ModuleNode) -> List[Violation]:
         violations = []
         
-        if not hasattr(module, 'source_file') or not module.source_file:
-            print("⚠️ Нет информации о файле")
+        # Получаем исходный код напрямую из модуля
+        if not hasattr(module, 'original_code') or not module.original_code:
             return violations
         
-        # Читаем файл
-        try:
-            with open(module.source_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-        except Exception as e:
-            print(f"⚠️ Не удалось прочитать файл {module.source_file}: {e}")
-            return violations
+        lines = module.original_code.split('\n')
         
-        # 1. Проверяем процедуры
+        # Проверяем процедуры
         for proc in module.procedures:
-            if proc.range:
-                line_before = proc.range.start.line - 1
+            if proc.range and proc.range.start.line:
+                line_before = proc.range.start.line - 2  # строка перед объявлением
                 if 0 <= line_before < len(lines):
                     prev_line = lines[line_before].strip()
                     if not prev_line.startswith("//"):
@@ -45,11 +40,11 @@ class MissingProcedureComment(BaseRule):
                                 message=f"Процедура '{proc.name}' не имеет описания. Добавьте комментарий над процедурой.",
                             )
                         )
-
-        # 2. Проверяем функции
+        
+        # Проверяем функции
         for func in module.functions:
-            if func.range:
-                line_before = func.range.start.line - 1
+            if func.range and func.range.start.line:
+                line_before = func.range.start.line - 2  # строка перед объявлением
                 if 0 <= line_before < len(lines):
                     prev_line = lines[line_before].strip()
                     if not prev_line.startswith("//"):
@@ -64,5 +59,5 @@ class MissingProcedureComment(BaseRule):
                                 message=f"Функция '{func.name}' не имеет описания. Добавьте комментарий над функцией.",
                             )
                         )
-
+        
         return violations

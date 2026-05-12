@@ -27,6 +27,7 @@ from src.visitor.factory import VisitorFactory
 from flask import render_template, request, redirect, url_for, flash
 from src.rules.rule_generator import RuleGenerator
 app = Flask(__name__)
+app.secret_key = 'my-secret-key-12345' 
 CORS(app)
 
 app.template_folder = os.path.join(current_dir, 'templates')
@@ -604,7 +605,10 @@ def admin_rules():
     
     return render_template("admin/rules.html", rules=rules)
 
-
+@app.route("/api/analyse", methods=["POST"])
+def analyse():
+    return json_unicode({"status": "ok", "message": "ZIP-архив получен!"}, 200)
+    
 @app.route("/admin/rules/new", methods=["GET", "POST"])
 def admin_rule_new():
     """Создание нового правила"""
@@ -654,18 +658,17 @@ def admin_rule_new():
 
 
 @app.route("/admin/rules/<int:rule_id>/edit", methods=["GET", "POST"])
-
 def admin_rule_edit(rule_id):
     from src.database.db_manager import RuleRepository
+    
     rule_repo = RuleRepository(db)
     rule = rule_repo.get_rule_by_id(rule_id)
     
     if not rule:
-        flash("Правило не найдено!")
         return redirect(url_for('admin_rules'))
     
     if request.method == "POST":
-        # 1. Обновляем запись в БД
+        # Обновляем основную информацию
         update_data = {
             'name': request.form.get('name'),
             'description': request.form.get('description', ''),
@@ -674,35 +677,53 @@ def admin_rule_edit(rule_id):
         }
         rule_repo.update_rule(rule_id, update_data)
         
-        # 2. Обновляем параметры правила (max_params, min_length и т.д.)
-        # Сохраняем параметры в таблицу rule_parameter
-        rule_repo.delete_rule_parameters(rule_id)  # удаляем старые
+        # Обновляем параметры правила
+        rule_repo.delete_rule_parameters(rule_id)
         
         if request.form.get('max_params'):
             rule_repo.save_rule_parameter(rule_id, 'max_params', request.form.get('max_params'), 'integer')
+        if request.form.get('max_default_params'):
+            rule_repo.save_rule_parameter(rule_id, 'max_default_params', request.form.get('max_default_params'), 'integer')
         if request.form.get('min_length'):
             rule_repo.save_rule_parameter(rule_id, 'min_length', request.form.get('min_length'), 'integer')
+        if request.form.get('max_lines'):
+            rule_repo.save_rule_parameter(rule_id, 'max_lines', request.form.get('max_lines'), 'integer')
         if request.form.get('forbidden_words'):
             rule_repo.save_rule_parameter(rule_id, 'forbidden_words', request.form.get('forbidden_words'), 'string')
         if request.form.get('camelcase_prefix'):
             rule_repo.save_rule_parameter(rule_id, 'camelcase_prefix', request.form.get('camelcase_prefix'), 'string')
         
-        # 3. Перегенерируем файл правила
-        from src.rules.rule_generator import RuleGenerator
-        file_path = RuleGenerator.generate_rule_file(rule_id)  # читает параметры из БД
-        
-        # 4. Обновляем file_path и class_name в БД (если изменились)
-        # (можно оставить как есть или перезаписать)
-        
-        flash(f"Правило {rule['code']} обновлено!")
         return redirect(url_for('admin_rules'))
     
-    # GET: загружаем параметры правила из БД для отображения в форме
+    # ✅ ИСПРАВЛЕНО: загружаем параметры правила из БД в объект rule
     params = rule_repo.get_parameters_for_rule(rule_id)
-    param_dict = {p['param_name']: p['param_value'] for p in params}
+    for p in params:
+        rule[p['param_name']] = p['param_value']
     
-    return render_template("admin/rule_form.html", rule={**rule, **param_dict})
+    # ✅ Для FUN-04 в rule появятся ключи 'max_params' и 'max_default_params'
+    
+    return render_template("admin/rule_form.html", rule=rule)
 
+@app.route("/admin/rules/<int:rule_id>/toggle", methods=["POST"])
+def admin_rule_toggle(rule_id):
+    from src.database.db_manager import RuleRepository
+    from src.rules.rule_generator import RuleGenerator
+    
+    rule_repo = RuleRepository(db)
+    rule = rule_repo.get_rule_by_id(rule_id)
+    
+    if not rule:
+        return redirect(url_for('admin_rules'))
+    
+    # Инвертируем статус
+    new_status = not rule.get('is_active', True)
+    rule_repo.toggle_rule_status(rule_id, new_status)
+    
+    # Перегенерируем файл правила с новым статусом
+    RuleGenerator.generate_rule_file_by_id(rule_id, db)
+    
+    # ❌ БЕЗ flash() — просто редирект
+    return redirect(url_for('admin_rules'))
 def admin_rule_delete(rule_id):
     """Удаление правила"""
     from src.database.db_manager import RuleRepository

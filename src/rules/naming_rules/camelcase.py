@@ -86,10 +86,6 @@ class CamelCase(BaseRule):
         if len(name) > 2 and name.isupper():
             return True
         
-        # Это для CamelCase: ПерваяЗаглавная, остальные строчные
-        if name[0].isupper():
-            
-            pass
         
         return False
 

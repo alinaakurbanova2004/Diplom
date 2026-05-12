@@ -10,7 +10,6 @@
             box-sizing: border-box;
         }
 
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0f2f5;
@@ -20,15 +19,8 @@
         }
 
         table {
-            table-layout: fixed;
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        table {
             width: 100%;
             table-layout: fixed;
-            /* Фиксируем макет, чтобы ширина не зависела от содержимого */
             border-collapse: collapse;
         }
 
@@ -38,26 +30,21 @@
             padding: 12px 15px;
             text-align: left;
             vertical-align: middle;
-            /* Предотвращает перенос текста, обрезая его с многоточием */
         }
 
         /* Колонки */
         th:nth-child(6),
         td:nth-child(6) {
             width: 300px;
-            /* Ширина под кнопки */
             max-width: 300px;
             white-space: nowrap;
         }
 
-        /* Для остальных колонок используем проценты или auto, чтобы они сжимались равномерно */
-        /* Колонки с фиксированной шириной (ручное управление) */
         th:nth-child(1),
         td:nth-child(1) {
             width: 80px;
         }
 
-        /* Код */
         th:nth-child(2),
         td:nth-child(2) {
             width: 250px;
@@ -66,7 +53,6 @@
             text-overflow: ellipsis !important;
         }
 
-        /* Принудительно для колонки Описание — ОДНА СТРОКА с многоточием */
         td:nth-child(3) {
             white-space: nowrap !important;
             overflow: hidden !important;
@@ -74,7 +60,6 @@
             max-width: 350px;
         }
 
-        /* Колонка «Критичность» — расширяем, чтобы видеть полное слово */
         th:nth-child(4),
         td:nth-child(4) {
             width: 120px;
@@ -82,7 +67,6 @@
             white-space: normal;
         }
 
-        /* Колонка «Статус» */
         th:nth-child(5),
         td:nth-child(5) {
             width: 100px;
@@ -90,7 +74,6 @@
             white-space: normal;
         }
 
-        /* Стили кнопок (опционально, для красоты) */
         button {
             margin: 2px;
             padding: 4px 8px;
@@ -163,14 +146,6 @@
             line-height: 1.2;
         }
 
-        th,
-        td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-            vertical-align: middle;
-        }
-
         tr {
             height: 52px;
         }
@@ -178,7 +153,6 @@
         .actions {
             display: flex;
             flex-wrap: wrap;
-            /* Это ключевое свойство — позволяет кнопкам переноситься на новую строку */
             gap: 8px;
             align-items: center;
             height: 100%;
@@ -189,8 +163,6 @@
             font-weight: 600;
             color: white;
         }
-
-
 
         tr:hover {
             background: #f9fafb;

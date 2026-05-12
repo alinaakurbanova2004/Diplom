@@ -203,7 +203,7 @@
                     <div class="form-group">
                         <label>Код правила</label>
                         <input type="text" name="code" value="{{ rule.code if rule else '' }}" required
-                            pattern="[A-Z]{3}-\d{2}" placeholder="VAR-02">
+                            pattern="[A-Z]{3}-\d{2}">
                         <div class="help-text">Формат: XXX-XX (например, VAR-02, FUN-04)</div>
                     </div>
                     <div class="form-group">
@@ -234,36 +234,55 @@
                     <h3 class="parameter-group-title">Параметры правила</h3>
                 </div>
 
-                <!-- Блок с полями (отдельный контейнер) -->
                 <div class="parameter-group-content">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Максимальное количество параметров</label>
-                            <input type="number" name="max_params"
-                                value="{{ rule.max_params if rule and rule.max_params else 8 }}" min="1" max="30">
-                        </div>
-                        <div class="form-group">
-                            <label>Минимальная длина имени</label>
-                            <input type="number" name="min_length"
-                                value="{{ rule.min_length if rule and rule.min_length else 3 }}" min="1" max="50">
-                        </div>
+                    {% if rule.max_params is not none %}
+                    <div class="form-group">
+                        <label>Максимальное количество параметров</label>
+                        <input type="number" name="max_params" value="{{ rule.max_total_params }}" min="1" max="30">
+                        <div class="help-text">Максимальное количество параметров у функции/процедуры</div>
                     </div>
+                    {% endif %}
+
+                    {% if rule.max_default_params is not none %}
+                    <div class="form-group">
+                        <label>Максимальное количество параметров со значением по умолчанию</label>
+                        <input type="number" name="max_default_params" value="{{ rule.max_default_params }}" min="0"
+                            max="30">
+                        <div class="help-text">Максимальное количество параметров с умолчанием</div>
+                    </div>
+                    {% endif %}
+
+                    {% if rule.min_length is not none %}
+                    <div class="form-group">
+                        <label>Минимальная длина имени</label>
+                        <input type="number" name="min_length" value="{{ rule.min_length }}" min="1" max="50">
+                        <div class="help-text">Минимальная длина имени переменной</div>
+                    </div>
+                    {% endif %}
+
+                    {% if rule.max_lines is not none %}
+                    <div class="form-group">
+                        <label>Максимальное количество строк в процедуре</label>
+                        <input type="number" name="max_lines" value="{{ rule.max_lines }}" min="1" max="500">
+                        <div class="help-text">Максимальное количество строк в процедуре/функции</div>
+                    </div>
+                    {% endif %}
+
+                    {% if rule.forbidden_words is not none %}
                     <div class="form-group">
                         <label>Запрещённые слова (через запятую)</label>
-                        <input type="text" name="forbidden_words"
-                            value="{{ rule.forbidden_words if rule and rule.forbidden_words else '' }}">
+                        <input type="text" name="forbidden_words" value="{{ rule.forbidden_words }}">
+                        <div class="help-text">Слова, которые нельзя использовать в качестве имён переменных</div>
                     </div>
+                    {% endif %}
+
+                    {% if rule.camelcase_prefix is not none %}
                     <div class="form-group">
                         <label>Требуемый префикс</label>
-                        <input type="text" name="camelcase_prefix"
-                            value="{{ rule.camelcase_prefix if rule and rule.camelcase_prefix else '' }}">
+                        <input type="text" name="camelcase_prefix" value="{{ rule.camelcase_prefix }}">
+                        <div class="help-text">Имена должны начинаться с этого префикса (опционально)</div>
                     </div>
-                </div>
-
-                <div class="form-group checkbox-row">
-                    <label for="is_active">Правило активно</label>
-                    <input type="checkbox" id="is_active" name="is_active" value="true" {% if rule and rule.is_active
-                        %}checked{% elif not rule %}checked{% endif %}>
+                    {% endif %}
                 </div>
                 <div class="buttons">
                     <button type="submit" class="btn btn-primary">Сохранить</button>
