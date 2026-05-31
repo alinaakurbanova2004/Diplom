@@ -46,7 +46,6 @@
             margin-bottom: 20px;
         }
 
-        /* Отдельный контейнер для заголовка */
         .parameter-group-header {
             background-color: #9ca3af;
             margin-bottom: 0;
@@ -61,18 +60,12 @@
             font-size: 16px;
         }
 
-        /* Отдельный контейнер для содержимого */
         .parameter-group-content {
             background: #f9fafb;
             padding: 15px;
             margin-bottom: 20px;
             margin-top: 0;
             border-radius: 0 0 8px 8px;
-        }
-
-        .form-group:last-of-type input[type="checkbox"] {
-            width: auto;
-            margin: 0;
         }
 
         label {
@@ -108,32 +101,6 @@
             flex: 1;
         }
 
-        .form-group.checkbox-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            /* расстояние между надписью и чекбоксом */
-        }
-
-        .form-group.checkbox-row label {
-            margin-bottom: 0;
-            /* убираем стандартный отступ снизу у label */
-        }
-
-        .form-group.checkbox-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-
-            width: 150px;
-            white-space: nowrap;
-        }
-
-        .form-group.checkbox-row label {
-            margin-bottom: 0;
-            /* убираем стандартный отступ снизу у label */
-        }
-
         .buttons {
             display: flex;
             gap: 15px;
@@ -159,7 +126,7 @@
         }
 
         .btn-primary:hover {
-            background: #007ba7;
+            background: #005f7a;
         }
 
         .btn-secondary {
@@ -175,19 +142,6 @@
             font-size: 12px;
             color: #6b7280;
             margin-top: 5px;
-        }
-
-        .parameter-group {
-            background: #f9fafb;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .parameter-group h3 {
-            margin: 0 0 15px 0;
-            font-size: 16px;
-            color: #374151;
         }
     </style>
 </head>
@@ -207,7 +161,7 @@
                         <div class="help-text">Формат: XXX-XX (например, VAR-02, FUN-04)</div>
                     </div>
                     <div class="form-group">
-                        <label>Критичности</label>
+                        <label>Критичность</label>
                         <select name="severity" required>
                             <option value="INFO" {% if rule and rule.severity=='INFO' %}selected{% endif %}>INFO
                             </option>
@@ -229,13 +183,31 @@
                     <textarea name="description">{{ rule.description if rule else '' }}</textarea>
                 </div>
 
-                <!-- Блок Параметры правил (отдельный контейнер) -->
+                {# Проверяем, есть ли хотя бы один параметр #}
+                {% set has_params = false %}
+
+                {% if rule.get('max_total_params') is not none %}
+                    {% set has_params = true %}
+                {% endif %}
+                {% if rule.get('max_default_params') is not none %}
+                    {% set has_params = true %}
+                {% endif %}
+                {% if rule.get('min_length') is not none %}
+                    {% set has_params = true %}
+                {% endif %}
+                {% if rule.get('max_lines') is not none %}
+                    {% set has_params = true %}
+                {% endif %}
+                {% if rule.get('forbidden_words') is not none %}
+                    {% set has_params = true %}
+                {% endif %}
+
+                {% if has_params %}
                 <div class="parameter-group-header">
                     <h3 class="parameter-group-title">Параметры правила</h3>
                 </div>
-
                 <div class="parameter-group-content">
-                    {% if rule.max_total_params is not none %}
+                    {% if rule.get('max_total_params') is not none %}
                     <div class="form-group">
                         <label>Максимальное количество параметров</label>
                         <input type="number" name="max_total_params" value="{{ rule.max_total_params }}" min="1"
@@ -244,7 +216,7 @@
                     </div>
                     {% endif %}
 
-                    {% if rule.max_default_params is not none %}
+                    {% if rule.get('max_default_params') is not none %}
                     <div class="form-group">
                         <label>Максимальное количество параметров со значением по умолчанию</label>
                         <input type="number" name="max_default_params" value="{{ rule.max_default_params }}" min="0"
@@ -253,7 +225,7 @@
                     </div>
                     {% endif %}
 
-                    {% if rule.min_length is not none %}
+                    {% if rule.get('min_length') is not none %}
                     <div class="form-group">
                         <label>Минимальная длина имени</label>
                         <input type="number" name="min_length" value="{{ rule.min_length }}" min="1" max="50">
@@ -261,7 +233,7 @@
                     </div>
                     {% endif %}
 
-                    {% if rule.max_lines is not none %}
+                    {% if rule.get('max_lines') is not none %}
                     <div class="form-group">
                         <label>Максимальное количество строк в процедуре</label>
                         <input type="number" name="max_lines" value="{{ rule.max_lines }}" min="1" max="500">
@@ -269,7 +241,7 @@
                     </div>
                     {% endif %}
 
-                    {% if rule.forbidden_words is not none %}
+                    {% if rule.get('forbidden_words') is not none %}
                     <div class="form-group">
                         <label>Запрещённые слова (через запятую)</label>
                         <input type="text" name="forbidden_words" value="{{ rule.forbidden_words }}">
@@ -277,6 +249,8 @@
                     </div>
                     {% endif %}
                 </div>
+                {% endif %}
+
                 <div class="buttons">
                     <button type="submit" class="btn btn-primary">Сохранить</button>
                     <a href="/admin/rules" class="btn btn-secondary">Отмена</a>

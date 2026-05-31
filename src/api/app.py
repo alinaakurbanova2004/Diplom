@@ -292,6 +292,33 @@ def analyze_bsl_file(file_path: str, extract_dir: str):
 def admin_rules():
     rule_repo = RuleRepository(db)
     rules_data = rule_repo.get_all_rules()
+    
+    # ✅ Для каждого правила загружаем параметры и форматируем описание
+    for rule in rules_data:
+        rule_id = rule['id']
+        code = rule['code']
+        
+        # Загружаем параметры для правила
+        params = rule_repo.get_parameters_for_rule(rule_id)
+        param_dict = {}
+        for p in params:
+            value = int(p['param_value']) if p['param_type'] == 'integer' else p['param_value']
+            param_dict[p['param_name']] = value
+        
+        # Форматируем описание в зависимости от кода правила
+        if code == 'FUN-03' and 'max_lines' in param_dict:
+            rule['description'] = f"Процедура должна содержать не более {param_dict['max_lines']} строк."
+        
+        elif code == 'FUN-04':
+            max_total = param_dict.get('max_total_params', 7)
+            max_default = param_dict.get('max_default_params', 3)
+            rule['description'] = f"Функция/процедура должна иметь не более {max_total} параметров, из них не более {max_default} со значениями по умолчанию."
+        
+        elif code == 'VAR-04' and 'min_length' in param_dict:
+            rule['description'] = f"Имена переменных должны быть длиннее {param_dict['min_length']} символов (исключение: счетчики циклов)."
+        
+        # Для остальных правил оставляем описание из БД
+    
     return render_template("admin/rules.html", rules=rules_data)
 
 @app.route("/admin/rules/new", methods=["GET", "POST"])
@@ -318,36 +345,75 @@ def admin_rule_new():
 def admin_rule_edit(rule_id):
     rule_repo = RuleRepository(db)
     rule = rule_repo.get_rule_by_id(rule_id)
+    
     if not rule:
         return redirect(url_for('admin_rules'))
     
     if request.method == "POST":
-        rule_repo.update_rule(rule_id, {
-            'name': request.form.get('name'),
-            'description': request.form.get('description', ''),
+        # Обновляем основную информацию
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash("Ошибка: название правила не может быть пустым!")
+            return redirect(url_for('admin_rule_edit', rule_id=rule_id))
+        
+        # Получаем описание из формы (оно может быть изменено пользователем)
+        description = request.form.get('description', '')
+        
+        update_data = {
+            'name': name,
+            'description': description,
             'severity': request.form.get('severity', 'WARNING'),
             'is_active': request.form.get('is_active') == 'true'
-        })
-        rule_repo.delete_rule_parameters(rule_id)
+        }
+        rule_repo.update_rule(rule_id, update_data)
         
-        if request.form.get('max_total_params'):
-            rule_repo.save_rule_parameter(rule_id, 'max_total_params', request.form.get('max_total_params'), 'integer')
-        if request.form.get('max_default_params'):
-            rule_repo.save_rule_parameter(rule_id, 'max_default_params', request.form.get('max_default_params'), 'integer')
-        if request.form.get('min_length'):
-            rule_repo.save_rule_parameter(rule_id, 'min_length', request.form.get('min_length'), 'integer')
-        if request.form.get('max_lines'):
-            rule_repo.save_rule_parameter(rule_id, 'max_lines', request.form.get('max_lines'), 'integer')
-        if request.form.get('forbidden_words'):
-            rule_repo.save_rule_parameter(rule_id, 'forbidden_words', request.form.get('forbidden_words'), 'string')
+        # Обновляем параметры
+        for key, value in request.form.items():
+            if key in ['name', 'description', 'severity', 'is_active']:
+                continue
+            if value and str(value).strip():
+                param_type = 'integer' if key in ['max_total_params', 'max_default_params', 'min_length', 'max_lines'] else 'string'
+                
+                existing = rule_repo.db.execute_query(
+                    "SELECT id FROM rule_parameter WHERE rule_id = %s AND param_name = %s",
+                    (rule_id, key)
+                )
+                if existing:
+                    rule_repo.db.execute_non_query(
+                        "UPDATE rule_parameter SET param_value = %s, param_type = %s WHERE rule_id = %s AND param_name = %s",
+                        (str(value).strip(), param_type, rule_id, key)
+                    )
+                else:
+                    rule_repo.save_rule_parameter(rule_id, key, str(value).strip(), param_type)
         
         flash(f"Правило {rule['code']} обновлено!")
         return redirect(url_for('admin_rules'))
     
+    # GET: загружаем параметры
     params = rule_repo.get_parameters_for_rule(rule_id)
     for p in params:
-        rule[p['param_name']] = p['param_value']
-        rule[p['param_name'] + '_display'] = p.get('display_name', p['param_name'])
+        value = int(p['param_value']) if p['param_type'] == 'integer' else p['param_value']
+        rule[p['param_name']] = value
+    
+    print(f"\n🔍 Параметры для {rule['code']}: {dict(rule)}")
+    
+    # ✅ ФОРМИРУЕМ ОПИСАНИЕ ДЛЯ КОНКРЕТНЫХ ПРАВИЛ
+    code = rule['code']
+    
+    if code == 'FUN-03':
+        max_lines = rule.get('max_lines', 50)
+        rule['description'] = f"Процедура должна содержать не более {max_lines} строк."
+    
+    elif code == 'FUN-04':
+        max_total = rule.get('max_total_params', 7)
+        max_default = rule.get('max_default_params', 3)
+        rule['description'] = f"Функция/процедура должна иметь не более {max_total} параметров, из них не более {max_default} со значениями по умолчанию."
+    
+    elif code == 'VAR-04':
+        min_length = rule.get('min_length', 2)
+        rule['description'] = f"Имена переменных должны быть длиннее {min_length} символов (исключение: счетчики циклов)."
+    
+    # Для остальных правил оставляем описание как есть (из БД)
     
     return render_template("admin/rule_form.html", rule=rule)
 

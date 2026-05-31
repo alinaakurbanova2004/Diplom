@@ -88,6 +88,22 @@
             overflow: hidden;
         }
 
+        .flash-message {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .header {
             background: #90ee90;
             color: white;
@@ -340,6 +356,34 @@
         document.getElementById('searchInput').addEventListener('keyup', filterTable);
         document.getElementById('severityFilter').addEventListener('change', filterTable);
         document.getElementById('statusFilter').addEventListener('change', filterTable);
+    </script>
+    <script>
+        // Автоматическое исчезновение flash-сообщений через 5 секунд
+        document.addEventListener('DOMContentLoaded', function () {
+            var flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function (message) {
+                setTimeout(function () {
+                    message.style.transition = 'opacity 0.5s ease';
+                    message.style.opacity = '0';
+                    setTimeout(function () {
+                        message.remove();
+                    }, 500);
+                }, 5000);  // 5 секунд
+            });
+        });
+        // Автоматическое исчезновение flash-сообщений через 5 секунд
+        document.addEventListener('DOMContentLoaded', function () {
+            var flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function (message) {
+                setTimeout(function () {
+                    message.style.transition = 'opacity 0.5s ease';
+                    message.style.opacity = '0';
+                    setTimeout(function () {
+                        message.remove();
+                    }, 500);
+                }, 5000);
+            });
+        });
     </script>
 </body>
 
